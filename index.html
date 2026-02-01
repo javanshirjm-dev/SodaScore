@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RETRO HOOPS '86</title>
-    <link rel="shortcut icon" href="https://pngimg.com/d/cocacola_PNG22.png" type="image/x-icon">k
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
@@ -41,7 +40,7 @@
                 0 0 40px rgba(255, 0, 255, 0.5),
                 inset 0 0 100px rgba(0, 0, 0, 0.8);
             cursor: crosshair;
-            image-rendering: crisp-edges;
+            image-rendering: pixelated;
         }
 
         /* CRT Scanlines Effect */
@@ -153,165 +152,46 @@
 
         #recordMsg {
             position: absolute;
-            top: 35%;
-            width: 100%;
-            text-align: center;
-            font-size: 24px;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 18px;
             font-weight: bold;
             color: #ffff00;
             text-shadow:
-                0 0 30px #ffff00,
-                0 0 60px #ff00ff,
-                3px 3px 0 #ff00ff;
+                0 0 20px #ffff00,
+                0 0 40px #ff00ff,
+                2px 2px 0 #ff00ff;
             display: none;
             z-index: 20;
-            animation: recordPop 0.6s ease-out;
-        }
-
-        @keyframes recordPop {
-            0% {
-                transform: scale(0) rotate(-10deg);
-                opacity: 0;
-            }
-
-            50% {
-                transform: scale(1.3) rotate(5deg);
-            }
-
-            100% {
-                transform: scale(1) rotate(0deg);
-                opacity: 1;
-            }
-        }
-
-        #congratulations {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: none;
-            z-index: 25;
-            pointer-events: none;
-        }
-
-        .congrats-text {
-            position: absolute;
-            top: 30%;
-            width: 100%;
-            text-align: center;
-            font-size: 32px;
-            color: #ffff00;
-            text-shadow:
-                0 0 40px #ffff00,
-                0 0 80px #ff00ff,
-                4px 4px 0 #ff00ff;
-            animation: congratsGlow 1.5s ease-in-out infinite;
-        }
-
-        @keyframes congratsGlow {
-
-            0%,
-            100% {
-                transform: scale(1);
-                text-shadow:
-                    0 0 40px #ffff00,
-                    0 0 80px #ff00ff,
-                    4px 4px 0 #ff00ff;
-            }
-
-            50% {
-                transform: scale(1.1);
-                text-shadow:
-                    0 0 60px #ffff00,
-                    0 0 120px #ff00ff,
-                    6px 6px 0 #ff00ff;
-            }
-        }
-
-        .star-burst {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            animation: starBurst 1s ease-out forwards;
-        }
-
-        @keyframes starBurst {
-            0% {
-                transform: translate(-50%, -50%) scale(0) rotate(0deg);
-                opacity: 1;
-            }
-
-            100% {
-                transform: translate(-50%, -50%) scale(3) rotate(360deg);
-                opacity: 0;
-            }
-        }
-
-        #cheerGirl {
-            position: absolute;
-            bottom: 50px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: none;
-            z-index: 15;
-            animation: cheerBounce 0.5s ease-out;
-        }
-
-        @keyframes cheerBounce {
-            0% {
-                transform: translateX(-50%) translateY(100px) scale(0);
-                opacity: 0;
-            }
-
-            60% {
-                transform: translateX(-50%) translateY(-20px) scale(1.1);
-            }
-
-            100% {
-                transform: translateX(-50%) translateY(0) scale(1);
-                opacity: 1;
-            }
-        }
-
-        .cheer-message {
-            position: absolute;
-            top: -60px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 0, 255, 0.9);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 10px;
-            color: #fff;
+            animation: recordPulse 0.4s ease-out;
             white-space: nowrap;
-            border: 2px solid #00ffff;
-            box-shadow: 0 0 20px #ff00ff;
-            animation: messagePop 0.4s ease-out;
         }
 
-        @keyframes messagePop {
+        @keyframes recordPulse {
             0% {
-                transform: translateX(-50%) scale(0);
+                transform: translate(-50%, -50%) scale(0.7);
+                opacity: 0;
             }
 
-            70% {
-                transform: translateX(-50%) scale(1.2);
+            50% {
+                transform: translate(-50%, -50%) scale(1.15);
             }
 
             100% {
-                transform: translateX(-50%) scale(1);
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
             }
         }
 
         #combo {
             position: absolute;
-            top: 50%;
+            top: 70%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 20px;
+            font-size: 14px;
             color: #00ffff;
-            text-shadow: 0 0 20px #00ffff;
+            text-shadow: 0 0 15px #00ffff;
             display: none;
             z-index: 15;
             animation: comboFloat 1s ease-out forwards;
@@ -324,25 +204,58 @@
             }
 
             50% {
-                transform: translate(-50%, -60%) scale(1.2);
+                transform: translate(-50%, -55%) scale(1.1);
             }
 
             100% {
                 opacity: 0;
-                transform: translate(-50%, -80%) scale(1);
+                transform: translate(-50%, -65%) scale(1);
             }
         }
 
         #streak {
             position: absolute;
-            top: 100px;
+            top: 140px;
             width: 100%;
             text-align: center;
-            font-size: 12px;
+            font-size: 9px;
             color: #ffff00;
-            text-shadow: 0 0 15px #ffff00;
+            text-shadow: 0 0 12px #ffff00;
             pointer-events: none;
             z-index: 10;
+        }
+
+        #cheerleaders {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .pixel-cheerleader {
+            position: absolute;
+            bottom: 15px;
+            image-rendering: pixelated;
+            animation: cheerJump 0.5s ease-out;
+        }
+
+        @keyframes cheerJump {
+            0% {
+                transform: translateY(40px) scale(0);
+                opacity: 0;
+            }
+
+            60% {
+                transform: translateY(-8px) scale(1.05);
+            }
+
+            100% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
         }
     </style>
 </head>
@@ -350,6 +263,8 @@
 <body>
 
     <div id="gameContainer">
+        <div id="cheerleaders"></div>
+
         <div id="ui">
             <h1>RETRO HOOPS</h1>
             <div class="label">SCORE</div>
@@ -360,64 +275,6 @@
         <div id="streak"></div>
         <div id="combo">COMBO!</div>
         <div id="recordMsg">★ NEW RECORD! ★</div>
-
-        <div id="congratulations">
-            <div class="congrats-text">
-                ★★ CONGRATULATIONS! ★★<br>
-                <span style="font-size: 16px; margin-top: 10px; display: inline-block;">NEW HIGH SCORE!</span>
-            </div>
-        </div>
-
-        <div id="cheerGirl">
-            <svg width="100" height="120" viewBox="0 0 100 120">
-                <!-- Hair -->
-                <ellipse cx="50" cy="35" rx="28" ry="32" fill="#ff00ff" />
-
-                <!-- Head -->
-                <circle cx="50" cy="35" r="20" fill="#ffcc99" />
-
-                <!-- Eyes -->
-                <circle cx="43" cy="32" r="2" fill="#000" />
-                <circle cx="57" cy="32" r="2" fill="#000" />
-
-                <!-- Smile -->
-                <path d="M 42 40 Q 50 45 58 40" stroke="#000" stroke-width="1.5" fill="none" />
-
-                <!-- Cheerleader outfit - top -->
-                <rect x="35" y="53" width="30" height="20" fill="#00ffff" rx="3" />
-                <text x="50" y="67" font-size="12" fill="#ff00ff" text-anchor="middle" font-weight="bold">★</text>
-
-                <!-- Arms - raised -->
-                <g class="left-arm">
-                    <rect x="28" y="55" width="8" height="25" fill="#ffcc99" rx="4" transform="rotate(-45 32 55)" />
-                    <!-- Pom-pom -->
-                    <circle cx="18" cy="48" r="8" fill="#ffff00" />
-                    <circle cx="15" cy="45" r="3" fill="#ff00ff" />
-                    <circle cx="21" cy="45" r="3" fill="#ff00ff" />
-                    <circle cx="18" cy="51" r="3" fill="#ff00ff" />
-                </g>
-                <g class="right-arm">
-                    <rect x="64" y="55" width="8" height="25" fill="#ffcc99" rx="4" transform="rotate(45 68 55)" />
-                    <!-- Pom-pom -->
-                    <circle cx="82" cy="48" r="8" fill="#ffff00" />
-                    <circle cx="79" cy="45" r="3" fill="#ff00ff" />
-                    <circle cx="85" cy="45" r="3" fill="#ff00ff" />
-                    <circle cx="82" cy="51" r="3" fill="#ff00ff" />
-                </g>
-
-                <!-- Skirt -->
-                <path d="M 35 73 L 30 95 L 70 95 L 65 73 Z" fill="#00ffff" />
-
-                <!-- Legs -->
-                <rect x="38" y="95" width="8" height="20" fill="#ffcc99" rx="4" />
-                <rect x="54" y="95" width="8" height="20" fill="#ffcc99" rx="4" />
-
-                <!-- Shoes -->
-                <ellipse cx="42" cy="117" rx="6" ry="4" fill="#fff" />
-                <ellipse cx="58" cy="117" rx="6" ry="4" fill="#fff" />
-            </svg>
-            <div class="cheer-message" id="cheerMessage">AMAZING!</div>
-        </div>
 
         <canvas id="gameCanvas"></canvas>
     </div>
@@ -446,8 +303,7 @@
         let hasCelebratedThisRun = false;
         let shakeAmount = 0;
         let backgroundStars = [];
-        let congratsTimer = 0;
-        let cheerTimer = 0;
+        let cheerleaders = [];
 
         // Slingshot Logic
         let isDragging = false;
@@ -494,6 +350,12 @@
             targetY: 200
         };
 
+        // Cheerleader colors
+        const cheerColors = [
+            '#ff00ff', '#00ffff', '#ffff00', '#ff0080', '#00ff00',
+            '#ff6600', '#0080ff', '#ff0000', '#80ff00', '#ff00aa'
+        ];
+
         // Initialize Stars
         for (let i = 0; i < 50; i++) {
             backgroundStars.push({
@@ -503,6 +365,72 @@
                 speed: Math.random() * 0.5 + 0.2,
                 brightness: Math.random()
             });
+        }
+
+        function createPixelCheerleader(color) {
+            const x = Math.random() * (canvas.width - 60) + 30;
+            const cheerEl = document.createElement('canvas');
+            cheerEl.width = 24;
+            cheerEl.height = 32;
+            cheerEl.className = 'pixel-cheerleader';
+            cheerEl.style.left = x + 'px';
+
+            const ctx = cheerEl.getContext('2d');
+            ctx.imageSmoothingEnabled = false;
+
+            // Draw pixel art cheerleader
+            // Hair
+            ctx.fillStyle = color;
+            ctx.fillRect(7, 4, 10, 3);
+            ctx.fillRect(6, 7, 12, 4);
+
+            // Head
+            ctx.fillStyle = '#ffcc99';
+            ctx.fillRect(8, 8, 8, 8);
+
+            // Eyes
+            ctx.fillStyle = '#000';
+            ctx.fillRect(10, 11, 1, 1);
+            ctx.fillRect(13, 11, 1, 1);
+
+            // Smile
+            ctx.fillRect(10, 13, 4, 1);
+
+            // Body (outfit)
+            ctx.fillStyle = color;
+            ctx.fillRect(8, 16, 8, 6);
+
+            // Arms (raised with pom-poms)
+            ctx.fillStyle = '#ffcc99';
+            ctx.fillRect(6, 17, 2, 4);
+            ctx.fillRect(16, 17, 2, 4);
+
+            // Pom-poms
+            ctx.fillStyle = '#ffff00';
+            ctx.fillRect(4, 15, 3, 3);
+            ctx.fillRect(17, 15, 3, 3);
+
+            // Skirt
+            ctx.fillStyle = color;
+            ctx.fillRect(7, 22, 10, 4);
+
+            // Legs
+            ctx.fillStyle = '#ffcc99';
+            ctx.fillRect(9, 26, 2, 5);
+            ctx.fillRect(13, 26, 2, 5);
+
+            // Shoes
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(8, 31, 3, 1);
+            ctx.fillRect(13, 31, 3, 1);
+
+            document.getElementById('cheerleaders').appendChild(cheerEl);
+            cheerleaders.push(cheerEl);
+        }
+
+        function clearCheerleaders() {
+            cheerleaders.forEach(el => el.remove());
+            cheerleaders = [];
         }
 
         function createParticles(x, y, color, count, isFire = false, isExplosion = false) {
@@ -538,69 +466,11 @@
             shakeAmount = amount;
         }
 
-        function showCongratulations() {
-            const congratsEl = document.getElementById('congratulations');
-            congratsEl.style.display = 'block';
-            congratsTimer = 180; // 3 seconds
-
-            // Create starburst effect
-            for (let i = 0; i < 12; i++) {
-                const star = document.createElement('div');
-                star.className = 'star-burst';
-                const angle = (i / 12) * Math.PI * 2;
-                const distance = 150;
-                star.style.left = `${50 + Math.cos(angle) * distance}%`;
-                star.style.top = `${40 + Math.sin(angle) * distance}%`;
-                star.style.background = i % 3 === 0 ? '#ffff00' : i % 3 === 1 ? '#ff00ff' : '#00ffff';
-                star.innerHTML = '★';
-                star.style.fontSize = '24px';
-                star.style.animationDelay = `${i * 0.05}s`;
-                congratsEl.appendChild(star);
-
-                setTimeout(() => star.remove(), 1000);
-            }
-
-            // Rainbow particles
-            createParticles(canvas.width / 2, canvas.height / 3, '#ffff00', 40, false, true);
-            createParticles(canvas.width / 2, canvas.height / 3, '#ff00ff', 40, false, true);
-            createParticles(canvas.width / 2, canvas.height / 3, '#00ffff', 40, false, true);
-        }
-
-        function showCheerGirl() {
-            const cheerGirl = document.getElementById('cheerGirl');
-            const messages = [
-                'AWESOME!', 'AMAZING!', 'GREAT SHOT!', 'ON FIRE!',
-                'KEEP GOING!', 'FANTASTIC!', 'INCREDIBLE!', 'WOW!'
-            ];
-
-            const message = messages[Math.floor(Math.random() * messages.length)];
-            document.getElementById('cheerMessage').innerText = message;
-
-            cheerGirl.style.display = 'block';
-            cheerTimer = 90; // 1.5 seconds
-
-            // Confetti from cheerleader
-            const cheerX = canvas.width / 2;
-            const cheerY = canvas.height - 50;
-            createParticles(cheerX, cheerY, '#ff00ff', 20, false, true);
-            createParticles(cheerX, cheerY, '#ffff00', 15, false, true);
-        }
-
         function update() {
-            if (celebrationTimer > 0) celebrationTimer--;
-            if (celebrationTimer === 0) document.getElementById('recordMsg').style.display = 'none';
-
-            if (congratsTimer > 0) {
-                congratsTimer--;
-                if (congratsTimer === 0) {
-                    document.getElementById('congratulations').style.display = 'none';
-                }
-            }
-
-            if (cheerTimer > 0) {
-                cheerTimer--;
-                if (cheerTimer === 0) {
-                    document.getElementById('cheerGirl').style.display = 'none';
+            if (celebrationTimer > 0) {
+                celebrationTimer--;
+                if (celebrationTimer === 0) {
+                    document.getElementById('recordMsg').style.display = 'none';
                 }
             }
 
@@ -1049,6 +919,10 @@
             score = 0;
             streak = 0;
             hasCelebratedThisRun = false;
+
+            // Clear all cheerleaders on fail
+            clearCheerleaders();
+
             updateUI();
 
             setTimeout(() => { resetSoda(); }, 1200);
@@ -1058,9 +932,10 @@
             score++;
             streak++;
 
-            // Show cheerleader every 3 points
+            // Spawn new cheerleader every 3 points
             if (score > 0 && score % 3 === 0) {
-                showCheerGirl();
+                const colorIndex = Math.floor(score / 3 - 1) % cheerColors.length;
+                createPixelCheerleader(cheerColors[colorIndex]);
             }
 
             // Show combo message
@@ -1075,18 +950,13 @@
                 highScore = score;
                 localStorage.setItem('retroHoopsScore', highScore);
 
-                if (!hasCelebratedThisRun) {
-                    // Full congratulations animation
-                    showCongratulations();
-                    screenShake(20);
-                    hasCelebratedThisRun = true;
-                } else {
-                    // Just show the smaller new record message
-                    celebrationTimer = 100;
-                    document.getElementById('recordMsg').style.display = 'block';
-                    createParticles(canvas.width / 2, canvas.height / 2, '#ffff00', 50, false, true);
-                    screenShake(12);
-                }
+                // Simple new record message
+                celebrationTimer = 90;
+                document.getElementById('recordMsg').style.display = 'block';
+                createParticles(canvas.width / 2, canvas.height / 2, '#ffff00', 30, false, true);
+                createParticles(canvas.width / 2, canvas.height / 2, '#ff00ff', 20, false, true);
+                screenShake(12);
+                hasCelebratedThisRun = true;
             }
 
             // Score particles
