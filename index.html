@@ -1,1073 +1,767 @@
-<!DOCTYPE html>
-<html lang="en">
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RETRO HOOPS '86</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+    // Setup Canvas
+    canvas.width = 400;
+    canvas.height = 600;
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    let savedScore = localStorage.getItem('retroHoopsScore');
+    let highScore = savedScore ? parseInt(savedScore) : 0;
+    document.getElementById('highScoreVal').innerText = highScore;
 
-        body {
-            margin: 0;
-            background: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            color: white;
-            font-family: 'Press Start 2P', monospace;
-            overflow: hidden;
-            user-select: none;
-        }
+    // Game Variables
+    let score = 0;
+    let streak = 0;
+    let gravity = 0.45;
+    let friction = 0.985;
+    let isSodaInAir = false;
+    let particles = [];
+    let trails = [];
+    let celebrationTimer = 0;
+    let hasCelebratedThisRun = false;
+    let shakeAmount = 0;
+    let backgroundStars = [];
+    let cheerTimer = 0;
 
-        #gameContainer {
-            position: relative;
-            filter: contrast(1.1) brightness(1.05);
-        }
+    // --- FIX: IMAGES ---
+    // These are reliable placeholder images. 
+    // To use your own, upload your images to Imgur.com and paste the Direct Link (ending in .png or .jpg) here.
+    const girl1URL = 'https://placehold.co/150x200/ff00ff/ffffff?text=GIRL+1&font=roboto';
+    const girl2URL = 'https://placehold.co/150x200/00ffff/000000?text=GIRL+2&font=roboto';
 
-        canvas {
-            background: linear-gradient(to bottom, #1a0033, #000000);
-            border: 4px solid #ff00ff;
-            box-shadow:
-                0 0 20px #ff00ff,
-                0 0 40px rgba(255, 0, 255, 0.5),
-                inset 0 0 100px rgba(0, 0, 0, 0.8);
-            cursor: crosshair;
-            image-rendering: pixelated;
-        }
+    // Slingshot Logic
+    let isDragging = false;
+    let dragCurrentX = 0;
+    let dragCurrentY = 0;
+    const forceMultiplier = 0.2;
+    const maxDragDistance = 130;
 
-        /* CRT Scanlines Effect */
-        #gameContainer::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: repeating-linear-gradient(0deg,
-                    rgba(0, 0, 0, 0.15),
-                    rgba(0, 0, 0, 0.15) 1px,
-                    transparent 1px,
-                    transparent 2px);
-            pointer-events: none;
-            z-index: 5;
-        }
+    // Retro Can Types with Vibrant Colors
+    const canTypes = [
+        { name: 'NEON', color: '#ff00ff', logo: '#00ffff', glow: '#ff00ff' },
+        { name: 'CYBER', color: '#00ffff', logo: '#ff00ff', glow: '#00ffff' },
+        { name: 'SOLAR', color: '#ffff00', logo: '#ff00ff', glow: '#ffff00' },
+        { name: 'ULTRA', color: '#ff0080', logo: '#00ff00', glow: '#ff0080' },
+        { name: 'RETRO', color: '#00ff00', logo: '#ff00ff', glow: '#00ff00' }
+    ];
 
-        /* CRT Curve Effect */
-        #gameContainer::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: radial-gradient(ellipse at center,
-                    rgba(0, 0, 0, 0) 0%,
-                    rgba(0, 0, 0, 0) 50%,
-                    rgba(0, 0, 0, 0.3) 100%);
-            pointer-events: none;
-            z-index: 5;
-        }
+    const soda = {
+        x: 60,
+        y: canvas.height - 150,
+        width: 26,
+        height: 42,
+        angle: 0,
+        angularVelocity: 0,
+        typeIdx: 0,
+        vx: 0,
+        vy: 0,
+        startX: 60,
+        startY: canvas.height - 150,
+        visible: true,
+        squashX: 1,
+        squashY: 1
+    };
 
-        #ui {
-            position: absolute;
-            top: 20px;
-            width: 100%;
-            text-align: center;
-            pointer-events: none;
-            z-index: 10;
-        }
+    // Basket (Side View)
+    const basket = {
+        x: 280,
+        y: 200,
+        width: 80,
+        height: 60,
+        speed: 2,
+        direction: 1,
+        wobble: 0,
+        targetY: 200
+    };
 
-        h1 {
-            margin: 0;
-            font-size: 28px;
-            font-weight: 400;
-            color: #00ffff;
-            text-shadow:
-                3px 3px 0 #ff00ff,
-                -2px -2px 0 #ffff00,
-                0 0 20px #00ffff;
-            letter-spacing: 4px;
-            animation: glitchTitle 3s infinite;
-        }
+    // Initialize Stars
+    for (let i = 0; i < 50; i++) {
+        backgroundStars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: Math.random() * 2,
+            speed: Math.random() * 0.5 + 0.2,
+            brightness: Math.random()
+        });
+    }
 
-        @keyframes glitchTitle {
-
-            0%,
-            90%,
-            100% {
-                transform: translate(0);
-                text-shadow:
-                    3px 3px 0 #ff00ff,
-                    -2px -2px 0 #ffff00,
-                    0 0 20px #00ffff;
-            }
-
-            92% {
-                transform: translate(-2px, 2px);
-                text-shadow:
-                    3px 3px 0 #ffff00,
-                    -2px -2px 0 #00ffff,
-                    0 0 20px #ff00ff;
-            }
-
-            94% {
-                transform: translate(2px, -2px);
-            }
-        }
-
-        .label {
-            font-size: 8px;
-            color: #ff00ff;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            text-shadow: 0 0 10px #ff00ff;
-            margin: 10px 0;
-        }
-
-        #scoreVal {
-            font-size: 48px;
-            display: inline-block;
-            animation: scoreGlow 2s ease-in-out infinite;
-        }
-
-        @keyframes scoreGlow {
-
-            0%,
-            100% {
-                text-shadow: 0 0 20px currentColor;
-            }
-
-            50% {
-                text-shadow: 0 0 40px currentColor, 0 0 60px currentColor;
-            }
-        }
-
-        #recordMsg {
-            position: absolute;
-            top: 40%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 18px;
-            font-weight: bold;
-            color: #ffff00;
-            text-shadow:
-                0 0 20px #ffff00,
-                0 0 40px #ff00ff,
-                2px 2px 0 #ff00ff;
-            display: none;
-            z-index: 20;
-            animation: recordPulse 0.4s ease-out;
-            white-space: nowrap;
-        }
-
-        @keyframes recordPulse {
-            0% {
-                transform: translate(-50%, -50%) scale(0.7);
-                opacity: 0;
-            }
-
-            50% {
-                transform: translate(-50%, -50%) scale(1.15);
-            }
-
-            100% {
-                transform: translate(-50%, -50%) scale(1);
-                opacity: 1;
-            }
-        }
-
-        #combo {
-            position: absolute;
-            top: 70%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 14px;
-            color: #00ffff;
-            text-shadow: 0 0 15px #00ffff;
-            display: none;
-            z-index: 15;
-            animation: comboFloat 1s ease-out forwards;
-        }
-
-        @keyframes comboFloat {
-            0% {
-                opacity: 1;
-                transform: translate(-50%, -50%) scale(0.5);
-            }
-
-            50% {
-                transform: translate(-50%, -55%) scale(1.1);
-            }
-
-            100% {
-                opacity: 0;
-                transform: translate(-50%, -65%) scale(1);
-            }
-        }
-
-        #streak {
-            position: absolute;
-            top: 140px;
-            width: 100%;
-            text-align: center;
-            font-size: 9px;
-            color: #ffff00;
-            text-shadow: 0 0 12px #ffff00;
-            pointer-events: none;
-            z-index: 10;
-        }
-
-        #cheerGirl {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            width: 150px;
-            height: auto;
-            display: none;
-            z-index: 15;
-            animation: cheerAppear 0.6s ease-out;
-            filter: drop-shadow(0 0 20px rgba(255, 0, 255, 0.8));
-        }
-
-        @keyframes cheerAppear {
-            0% {
-                transform: translateY(50px) scale(0);
-                opacity: 0;
-            }
-
-            60% {
-                transform: translateY(-10px) scale(1.1);
-            }
-
-            100% {
-                transform: translateY(0) scale(1);
-                opacity: 1;
-            }
-        }
-
-        #cheerMessage {
-            position: absolute;
-            bottom: 180px;
-            right: 30px;
-            background: rgba(255, 0, 255, 0.95);
-            padding: 12px 20px;
-            border-radius: 25px;
-            font-size: 11px;
-            color: #fff;
-            white-space: nowrap;
-            border: 3px solid #00ffff;
-            box-shadow: 0 0 30px #ff00ff;
-            display: none;
-            z-index: 16;
-            animation: messageBounce 0.5s ease-out;
-        }
-
-        @keyframes messageBounce {
-            0% {
-                transform: scale(0) rotate(-5deg);
-            }
-
-            60% {
-                transform: scale(1.15) rotate(2deg);
-            }
-
-            100% {
-                transform: scale(1) rotate(0deg);
-            }
-        }
-    </style>
-</head>
-
-<body>
-
-    <div id="gameContainer">
-        <div id="ui">
-            <h1>RETRO HOOPS</h1>
-            <div class="label">SCORE</div>
-            <div><span id="scoreVal">0</span></div>
-            <div class="label" style="margin-top: 10px;">BEST: <span id="highScoreVal">0</span></div>
-        </div>
-
-        <div id="streak"></div>
-        <div id="combo">COMBO!</div>
-        <div id="recordMsg">★ NEW RECORD! ★</div>
-
-        <img id="cheerGirl" src="" alt="Cheerleader">
-        <div id="cheerMessage">GOOD JOB!</div>
-
-        <canvas id="gameCanvas"></canvas>
-    </div>
-
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-
-        // Setup Canvas
-        canvas.width = 400;
-        canvas.height = 600;
-
-        let savedScore = localStorage.getItem('retroHoopsScore');
-        let highScore = savedScore ? parseInt(savedScore) : 0;
-        document.getElementById('highScoreVal').innerText = highScore;
-
-        // Game Variables
-        let score = 0;
-        let streak = 0;
-        let gravity = 0.45;
-        let friction = 0.985;
-        let isSodaInAir = false;
-        let particles = [];
-        let trails = [];
-        let celebrationTimer = 0;
-        let hasCelebratedThisRun = false;
-        let shakeAmount = 0;
-        let backgroundStars = [];
-        let cheerTimer = 0;
-        let currentCheerGirl = 'girl1'; // 'girl1' or 'girl2'
-
-        // Girl images
-        const girl1URL = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTjIpXCZ1mcCkDFoAlGWDRtXv0gb1cWn5Jlng&s';
-        const girl2URL = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTU3mr-hyRiqUZ82QeWULYtEPmvM9hBGVvdYw&s';
-
-        // Slingshot Logic
-        let isDragging = false;
-        let dragCurrentX = 0;
-        let dragCurrentY = 0;
-        const forceMultiplier = 0.2;
-        const maxDragDistance = 130;
-
-        // Retro Can Types with Vibrant Colors
-        const canTypes = [
-            { name: 'NEON', color: '#ff00ff', logo: '#00ffff', glow: '#ff00ff' },
-            { name: 'CYBER', color: '#00ffff', logo: '#ff00ff', glow: '#00ffff' },
-            { name: 'SOLAR', color: '#ffff00', logo: '#ff00ff', glow: '#ffff00' },
-            { name: 'ULTRA', color: '#ff0080', logo: '#00ff00', glow: '#ff0080' },
-            { name: 'RETRO', color: '#00ff00', logo: '#ff00ff', glow: '#00ff00' }
+    // --- FIX: UPDATED FUNCTION ---
+    function showCheerGirl() {
+        const messages = [
+            'GOOD JOB!', 'EXCELLENT!', 'AMAZING!', 'FANTASTIC!',
+            'KEEP IT UP!', 'ON FIRE!', 'INCREDIBLE!', 'PERFECT!'
         ];
 
-        const soda = {
-            x: 60,
-            y: canvas.height - 150,
-            width: 26,
-            height: 42,
-            angle: 0,
-            angularVelocity: 0,
-            typeIdx: 0,
-            vx: 0,
-            vy: 0,
-            startX: 60,
-            startY: canvas.height - 150,
-            visible: true,
-            squashX: 1,
-            squashY: 1
-        };
+        const message = messages[Math.floor(Math.random() * messages.length)];
+        const cheerImg = document.getElementById('cheerGirl');
+        const cheerMsg = document.getElementById('cheerMessage');
 
-        // Basket (Side View)
-        const basket = {
-            x: 280,
-            y: 200,
-            width: 80,
-            height: 60,
-            speed: 2,
-            direction: 1,
-            wobble: 0,
-            targetY: 200
-        };
-
-        // Initialize Stars
-        for (let i = 0; i < 50; i++) {
-            backgroundStars.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                size: Math.random() * 2,
-                speed: Math.random() * 0.5 + 0.2,
-                brightness: Math.random()
-            });
+        // Simplified Logic: Just set the correct URL based on score
+        if (score >= 20) {
+            cheerImg.src = girl2URL;
+        } else {
+            cheerImg.src = girl1URL;
         }
 
-        function showCheerGirl() {
-            const messages = [
-                'GOOD JOB!', 'EXCELLENT!', 'AMAZING!', 'FANTASTIC!',
-                'KEEP IT UP!', 'ON FIRE!', 'INCREDIBLE!', 'PERFECT!'
-            ];
+        cheerMsg.innerText = message;
 
-            const message = messages[Math.floor(Math.random() * messages.length)];
-            const cheerImg = document.getElementById('cheerGirl');
-            const cheerMsg = document.getElementById('cheerMessage');
+        // Reset animation
+        cheerImg.style.display = 'none';
+        cheerImg.offsetHeight; // trigger reflow
+        cheerImg.style.display = 'block';
 
-            // Determine which girl to show based on score
-            if (score >= 20 && currentCheerGirl !== 'girl2') {
-                currentCheerGirl = 'girl2';
-                cheerImg.src = girl2URL;
-            } else if (score < 20 && currentCheerGirl !== 'girl1') {
-                currentCheerGirl = 'girl1';
-                cheerImg.src = girl1URL;
-            } else if (!cheerImg.src) {
-                cheerImg.src = girl1URL;
-            }
+        cheerMsg.style.display = 'none';
+        cheerMsg.offsetHeight; // trigger reflow
+        cheerMsg.style.display = 'block';
 
-            cheerMsg.innerText = message;
-            cheerImg.style.display = 'block';
-            cheerMsg.style.display = 'block';
-            cheerTimer = 120; // Show for 2 seconds
+        cheerTimer = 120; // Show for 2 seconds
 
-            // Particles from girl
-            createParticles(canvas.width - 80, canvas.height - 100, '#ff00ff', 15, false, true);
-        }
+        // Particles from girl
+        createParticles(canvas.width - 80, canvas.height - 100, '#ff00ff', 15, false, true);
+    }
 
-        function createParticles(x, y, color, count, isFire = false, isExplosion = false) {
-            for (let i = 0; i < count; i++) {
-                const angle = (Math.PI * 2 * i) / count;
-                const speed = isExplosion ? Math.random() * 8 + 4 : Math.random() * 3 + 1;
-                particles.push({
-                    x: x + (Math.random() * 10 - 5),
-                    y: y + (Math.random() * 10 - 5),
-                    vx: isFire ? (Math.random() - 0.5) * 2 : Math.cos(angle) * speed,
-                    vy: isFire ? (Math.random() * -3 - 1) : Math.sin(angle) * speed,
-                    life: 1.0,
-                    color: color,
-                    size: Math.random() * (isExplosion ? 8 : 5) + 2,
-                    isFire: isFire,
-                    rotation: Math.random() * Math.PI * 2,
-                    rotationSpeed: (Math.random() - 0.5) * 0.2
-                });
-            }
-        }
-
-        function createTrail(x, y, color) {
-            trails.push({
-                x: x,
-                y: y,
+    function createParticles(x, y, color, count, isFire = false, isExplosion = false) {
+        for (let i = 0; i < count; i++) {
+            const angle = (Math.PI * 2 * i) / count;
+            const speed = isExplosion ? Math.random() * 8 + 4 : Math.random() * 3 + 1;
+            particles.push({
+                x: x + (Math.random() * 10 - 5),
+                y: y + (Math.random() * 10 - 5),
+                vx: isFire ? (Math.random() - 0.5) * 2 : Math.cos(angle) * speed,
+                vy: isFire ? (Math.random() * -3 - 1) : Math.sin(angle) * speed,
                 life: 1.0,
                 color: color,
-                size: 8
+                size: Math.random() * (isExplosion ? 8 : 5) + 2,
+                isFire: isFire,
+                rotation: Math.random() * Math.PI * 2,
+                rotationSpeed: (Math.random() - 0.5) * 0.2
             });
         }
+    }
 
-        function screenShake(amount) {
-            shakeAmount = amount;
-        }
+    function createTrail(x, y, color) {
+        trails.push({
+            x: x,
+            y: y,
+            life: 1.0,
+            color: color,
+            size: 8
+        });
+    }
 
-        function update() {
-            if (celebrationTimer > 0) {
-                celebrationTimer--;
-                if (celebrationTimer === 0) {
-                    document.getElementById('recordMsg').style.display = 'none';
-                }
-            }
+    function screenShake(amount) {
+        shakeAmount = amount;
+    }
 
-            if (cheerTimer > 0) {
-                cheerTimer--;
-                if (cheerTimer === 0) {
-                    document.getElementById('cheerGirl').style.display = 'none';
-                    document.getElementById('cheerMessage').style.display = 'none';
-                }
-            }
-
-            if (shakeAmount > 0) {
-                shakeAmount *= 0.9;
-                if (shakeAmount < 0.1) shakeAmount = 0;
-            }
-
-            // Smooth Basket Movement with Easing
-            basket.wobble += 0.05;
-            const targetSpeed = 2 + (score * 0.15);
-            basket.speed += (targetSpeed - basket.speed) * 0.1;
-
-            basket.y += basket.speed * basket.direction;
-            if (basket.y > canvas.height - 150 || basket.y < 50) {
-                basket.direction *= -1;
-                screenShake(3);
-            }
-
-            // Update Stars
-            for (let star of backgroundStars) {
-                star.y += star.speed;
-                star.brightness = 0.3 + Math.sin(Date.now() * 0.001 + star.x) * 0.7;
-                if (star.y > canvas.height) {
-                    star.y = 0;
-                    star.x = Math.random() * canvas.width;
-                }
-            }
-
-            // Update Particles
-            for (let i = particles.length - 1; i >= 0; i--) {
-                let p = particles[i];
-                p.x += p.vx;
-                p.y += p.vy;
-                if (!p.isFire) p.vy += gravity * 0.5;
-                p.vx *= 0.98;
-                p.life -= p.isFire ? 0.04 : 0.025;
-                p.size *= 0.96;
-                p.rotation += p.rotationSpeed;
-                if (p.life <= 0) particles.splice(i, 1);
-            }
-
-            // Update Trails
-            for (let i = trails.length - 1; i >= 0; i--) {
-                let t = trails[i];
-                t.life -= 0.08;
-                t.size *= 0.92;
-                if (t.life <= 0) trails.splice(i, 1);
-            }
-
-            // Move Soda
-            if (isSodaInAir && soda.visible) {
-                soda.x += soda.vx;
-                soda.y += soda.vy;
-                soda.vy += gravity;
-                soda.vx *= friction;
-
-                // Realistic rotation based on velocity
-                soda.angularVelocity = soda.vx * 0.1;
-                soda.angle += soda.angularVelocity;
-
-                // Squash and stretch based on velocity
-                const speed = Math.sqrt(soda.vx * soda.vx + soda.vy * soda.vy);
-                soda.squashX = 1 + Math.abs(soda.vx) * 0.01;
-                soda.squashY = 1 + Math.abs(soda.vy) * 0.01;
-
-                // Trail Effect
-                if (score >= 3) {
-                    createTrail(soda.x, soda.y, canTypes[soda.typeIdx].glow);
-                }
-
-                // Fire/Glow Trail
-                if (score >= 5) {
-                    let fireColor = score >= 10 ? '#00ffff' : '#ff00ff';
-                    if (score >= 15) fireColor = '#ffff00';
-                    let intensity = Math.min(score / 3, 5);
-                    createParticles(soda.x, soda.y, fireColor, Math.floor(intensity), true);
-                }
-
-                // Fail Condition
-                if (soda.y > canvas.height + 20 || soda.x > canvas.width + 50 || soda.x < -50) {
-                    handleFail();
-                }
-
-                // Collision with Rim Tip
-                let dx = soda.x - basket.x;
-                let dy = soda.y - basket.y;
-                let dist = Math.sqrt(dx * dx + dy * dy);
-
-                if (dist < 16) {
-                    soda.vx = -Math.abs(soda.vx * 0.75) - 2.5;
-                    soda.vy *= -0.65;
-                    soda.x -= 3;
-                    soda.angularVelocity = -0.3;
-                    createParticles(basket.x, basket.y, '#ffffff', 8);
-                    screenShake(4);
-                }
-
-                // Collision with Backboard
-                let backboardX = basket.x + basket.width;
-                if (soda.x + soda.width / 2 > backboardX - 5 && soda.x < backboardX + 10) {
-                    if (soda.y > basket.y - 50 && soda.y < basket.y + 30) {
-                        soda.vx = -Math.abs(soda.vx * 0.7);
-                        soda.x = backboardX - 5 - soda.width / 2;
-                        soda.angularVelocity = 0.2;
-                        createParticles(backboardX, soda.y, '#ffffff', 6);
-                        screenShake(3);
-                    }
-                }
-
-                // Scoring Condition
-                if (soda.vy > 0) {
-                    if (soda.x > basket.x + 8 && soda.x < basket.x + basket.width - 8) {
-                        if (soda.y > basket.y && soda.y < basket.y + 18) {
-                            handleScore();
-                        }
-                    }
-                }
-            }
-
-            // Reset squash to normal when not moving
-            if (!isSodaInAir) {
-                soda.squashX += (1 - soda.squashX) * 0.2;
-                soda.squashY += (1 - soda.squashY) * 0.2;
+    function update() {
+        if (celebrationTimer > 0) {
+            celebrationTimer--;
+            if (celebrationTimer === 0) {
+                document.getElementById('recordMsg').style.display = 'none';
             }
         }
 
-        function draw() {
-            ctx.save();
+        if (cheerTimer > 0) {
+            cheerTimer--;
+            if (cheerTimer === 0) {
+                document.getElementById('cheerGirl').style.display = 'none';
+                document.getElementById('cheerMessage').style.display = 'none';
+            }
+        }
 
-            // Screen shake
-            if (shakeAmount > 0) {
-                ctx.translate(
-                    (Math.random() - 0.5) * shakeAmount,
-                    (Math.random() - 0.5) * shakeAmount
-                );
+        if (shakeAmount > 0) {
+            shakeAmount *= 0.9;
+            if (shakeAmount < 0.1) shakeAmount = 0;
+        }
+
+        // Smooth Basket Movement with Easing
+        basket.wobble += 0.05;
+        const targetSpeed = 2 + (score * 0.15);
+        basket.speed += (targetSpeed - basket.speed) * 0.1;
+
+        basket.y += basket.speed * basket.direction;
+        if (basket.y > canvas.height - 150 || basket.y < 50) {
+            basket.direction *= -1;
+            screenShake(3);
+        }
+
+        // Update Stars
+        for (let star of backgroundStars) {
+            star.y += star.speed;
+            star.brightness = 0.3 + Math.sin(Date.now() * 0.001 + star.x) * 0.7;
+            if (star.y > canvas.height) {
+                star.y = 0;
+                star.x = Math.random() * canvas.width;
+            }
+        }
+
+        // Update Particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            if (!p.isFire) p.vy += gravity * 0.5;
+            p.vx *= 0.98;
+            p.life -= p.isFire ? 0.04 : 0.025;
+            p.size *= 0.96;
+            p.rotation += p.rotationSpeed;
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+
+        // Update Trails
+        for (let i = trails.length - 1; i >= 0; i--) {
+            let t = trails[i];
+            t.life -= 0.08;
+            t.size *= 0.92;
+            if (t.life <= 0) trails.splice(i, 1);
+        }
+
+        // Move Soda
+        if (isSodaInAir && soda.visible) {
+            soda.x += soda.vx;
+            soda.y += soda.vy;
+            soda.vy += gravity;
+            soda.vx *= friction;
+
+            // Realistic rotation based on velocity
+            soda.angularVelocity = soda.vx * 0.1;
+            soda.angle += soda.angularVelocity;
+
+            // Squash and stretch based on velocity
+            const speed = Math.sqrt(soda.vx * soda.vx + soda.vy * soda.vy);
+            soda.squashX = 1 + Math.abs(soda.vx) * 0.01;
+            soda.squashY = 1 + Math.abs(soda.vy) * 0.01;
+
+            // Trail Effect
+            if (score >= 3) {
+                createTrail(soda.x, soda.y, canTypes[soda.typeIdx].glow);
             }
 
-            // Background
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#1a0033');
-            gradient.addColorStop(0.5, '#0a001a');
-            gradient.addColorStop(1, '#000000');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Draw Stars
-            for (let star of backgroundStars) {
-                ctx.globalAlpha = star.brightness;
-                ctx.fillStyle = score >= 10 ? '#00ffff' : score >= 5 ? '#ff00ff' : '#ffffff';
-                ctx.fillRect(star.x, star.y, star.size, star.size);
+            // Fire/Glow Trail
+            if (score >= 5) {
+                let fireColor = score >= 10 ? '#00ffff' : '#ff00ff';
+                if (score >= 15) fireColor = '#ffff00';
+                let intensity = Math.min(score / 3, 5);
+                createParticles(soda.x, soda.y, fireColor, Math.floor(intensity), true);
             }
-            ctx.globalAlpha = 1.0;
 
-            drawGrid();
+            // Fail Condition
+            if (soda.y > canvas.height + 20 || soda.x > canvas.width + 50 || soda.x < -50) {
+                handleFail();
+            }
 
-            // Launcher Platform
-            ctx.fillStyle = '#333';
-            ctx.shadowColor = '#ff00ff';
+            // Collision with Rim Tip
+            let dx = soda.x - basket.x;
+            let dy = soda.y - basket.y;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < 16) {
+                soda.vx = -Math.abs(soda.vx * 0.75) - 2.5;
+                soda.vy *= -0.65;
+                soda.x -= 3;
+                soda.angularVelocity = -0.3;
+                createParticles(basket.x, basket.y, '#ffffff', 8);
+                screenShake(4);
+            }
+
+            // Collision with Backboard
+            let backboardX = basket.x + basket.width;
+            if (soda.x + soda.width / 2 > backboardX - 5 && soda.x < backboardX + 10) {
+                if (soda.y > basket.y - 50 && soda.y < basket.y + 30) {
+                    soda.vx = -Math.abs(soda.vx * 0.7);
+                    soda.x = backboardX - 5 - soda.width / 2;
+                    soda.angularVelocity = 0.2;
+                    createParticles(backboardX, soda.y, '#ffffff', 6);
+                    screenShake(3);
+                }
+            }
+
+            // Scoring Condition
+            if (soda.vy > 0) {
+                if (soda.x > basket.x + 8 && soda.x < basket.x + basket.width - 8) {
+                    if (soda.y > basket.y && soda.y < basket.y + 18) {
+                        handleScore();
+                    }
+                }
+            }
+        }
+
+        // Reset squash to normal when not moving
+        if (!isSodaInAir) {
+            soda.squashX += (1 - soda.squashX) * 0.2;
+            soda.squashY += (1 - soda.squashY) * 0.2;
+        }
+    }
+
+    function draw() {
+        ctx.save();
+
+        // Screen shake
+        if (shakeAmount > 0) {
+            ctx.translate(
+                (Math.random() - 0.5) * shakeAmount,
+                (Math.random() - 0.5) * shakeAmount
+            );
+        }
+
+        // Background
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        gradient.addColorStop(0, '#1a0033');
+        gradient.addColorStop(0.5, '#0a001a');
+        gradient.addColorStop(1, '#000000');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Stars
+        for (let star of backgroundStars) {
+            ctx.globalAlpha = star.brightness;
+            ctx.fillStyle = score >= 10 ? '#00ffff' : score >= 5 ? '#ff00ff' : '#ffffff';
+            ctx.fillRect(star.x, star.y, star.size, star.size);
+        }
+        ctx.globalAlpha = 1.0;
+
+        drawGrid();
+
+        // Launcher Platform
+        ctx.fillStyle = '#333';
+        ctx.shadowColor = '#ff00ff';
+        ctx.shadowBlur = 10;
+        ctx.fillRect(soda.startX - 25, soda.startY + 25, 50, 8);
+        ctx.shadowBlur = 0;
+
+        // Draw Trails
+        for (let t of trails) {
+            ctx.globalAlpha = t.life * 0.6;
+            ctx.fillStyle = t.color;
+            ctx.shadowColor = t.color;
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, t.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1.0;
+        ctx.shadowBlur = 0;
+
+        // Particles
+        for (let p of particles) {
+            ctx.globalAlpha = p.life;
+            ctx.fillStyle = p.color;
+            ctx.shadowColor = p.color;
             ctx.shadowBlur = 10;
-            ctx.fillRect(soda.startX - 25, soda.startY + 25, 50, 8);
-            ctx.shadowBlur = 0;
-
-            // Draw Trails
-            for (let t of trails) {
-                ctx.globalAlpha = t.life * 0.6;
-                ctx.fillStyle = t.color;
-                ctx.shadowColor = t.color;
-                ctx.shadowBlur = 15;
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rotation);
+            if (p.isFire) {
+                ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            } else {
                 ctx.beginPath();
-                ctx.arc(t.x, t.y, t.size, 0, Math.PI * 2);
+                ctx.arc(0, 0, p.size, 0, Math.PI * 2);
                 ctx.fill();
             }
-            ctx.globalAlpha = 1.0;
-            ctx.shadowBlur = 0;
-
-            // Particles
-            for (let p of particles) {
-                ctx.globalAlpha = p.life;
-                ctx.fillStyle = p.color;
-                ctx.shadowColor = p.color;
-                ctx.shadowBlur = 10;
-                ctx.save();
-                ctx.translate(p.x, p.y);
-                ctx.rotate(p.rotation);
-                if (p.isFire) {
-                    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
-                } else {
-                    ctx.beginPath();
-                    ctx.arc(0, 0, p.size, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-                ctx.restore();
-            }
-            ctx.globalAlpha = 1.0;
-            ctx.shadowBlur = 0;
-
-            if (isDragging && !isSodaInAir && soda.visible) drawTrajectory();
-
-            // Draw Basket Layers
-            drawBasketNetBack();
-            drawBackboard();
-
-            if (soda.visible) drawSodaCan();
-
-            drawBasketNetFront();
-            drawRim();
-
             ctx.restore();
         }
+        ctx.globalAlpha = 1.0;
+        ctx.shadowBlur = 0;
 
-        function drawBackboard() {
-            const b = basket;
-            const bbX = b.x + b.width;
+        if (isDragging && !isSodaInAir && soda.visible) drawTrajectory();
 
-            // Pole with glow
-            ctx.fillStyle = '#555';
+        // Draw Basket Layers
+        drawBasketNetBack();
+        drawBackboard();
+
+        if (soda.visible) drawSodaCan();
+
+        drawBasketNetFront();
+        drawRim();
+
+        ctx.restore();
+    }
+
+    function drawBackboard() {
+        const b = basket;
+        const bbX = b.x + b.width;
+
+        // Pole with glow
+        ctx.fillStyle = '#555';
+        ctx.shadowColor = '#ff00ff';
+        ctx.shadowBlur = 5;
+        ctx.fillRect(bbX + 5, 0, 10, b.y);
+        ctx.shadowBlur = 0;
+
+        // Backboard
+        const bbGradient = ctx.createLinearGradient(bbX, b.y - 60, bbX + 8, b.y + 20);
+        bbGradient.addColorStop(0, '#ffffff');
+        bbGradient.addColorStop(1, '#cccccc');
+        ctx.fillStyle = bbGradient;
+        ctx.fillRect(bbX, b.y - 60, 8, 80);
+
+        // Neon stripe
+        ctx.fillStyle = score >= 10 ? '#00ffff' : score >= 5 ? '#ffff00' : '#ff00ff';
+        ctx.shadowColor = ctx.fillStyle;
+        ctx.shadowBlur = 15;
+        ctx.fillRect(bbX, b.y - 18, 8, 8);
+        ctx.shadowBlur = 0;
+    }
+
+    function drawRim() {
+        const b = basket;
+
+        // Rim glow effect
+        const glowIntensity = score >= 10 ? 25 : score >= 5 ? 20 : 15;
+        ctx.shadowColor = score >= 10 ? '#00ffff' : score >= 5 ? '#ffff00' : '#ff00ff';
+        ctx.shadowBlur = glowIntensity;
+
+        // Main rim line
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y);
+        ctx.lineTo(b.x + b.width, b.y);
+        ctx.lineWidth = 7;
+        ctx.strokeStyle = '#ff6600';
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        // Rim highlight
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y - 1);
+        ctx.lineTo(b.x + b.width, b.y - 1);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#ffaa44';
+        ctx.stroke();
+
+        ctx.shadowBlur = 0;
+
+        // Hook connector
+        ctx.beginPath();
+        ctx.moveTo(b.x + b.width, b.y);
+        ctx.lineTo(b.x + b.width - 15, b.y + 15);
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#cc4400';
+        ctx.stroke();
+    }
+
+    function drawBasketNetBack() {
+        const b = basket;
+
+        // Back net shadow
+        ctx.fillStyle = 'rgba(100, 100, 150, 0.2)';
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y);
+        ctx.lineTo(b.x + b.width, b.y);
+        ctx.lineTo(b.x + b.width - 10, b.y + b.height);
+        ctx.lineTo(b.x + 20, b.y + b.height);
+        ctx.fill();
+    }
+
+    function drawBasketNetFront() {
+        const b = basket;
+
+        // Net with glow
+        ctx.strokeStyle = score >= 5 ? 'rgba(0, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.shadowColor = score >= 5 ? '#00ffff' : '#ffffff';
+        ctx.shadowBlur = score >= 5 ? 10 : 5;
+
+        // Outline
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y);
+        ctx.lineTo(b.x + 5, b.y + 20);
+        ctx.lineTo(b.x + 10, b.y + 40);
+        ctx.lineTo(b.x + 20, b.y + b.height);
+        ctx.lineTo(b.x + b.width - 10, b.y + b.height);
+        ctx.lineTo(b.x + b.width - 5, b.y + 40);
+        ctx.lineTo(b.x + b.width - 2, b.y + 20);
+        ctx.lineTo(b.x + b.width, b.y);
+        ctx.stroke();
+
+        // Cross hatching
+        ctx.strokeStyle = score >= 5 ? 'rgba(0, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(b.x + 5, b.y + 20); ctx.lineTo(b.x + b.width - 2, b.y + 20);
+        ctx.moveTo(b.x + 10, b.y + 40); ctx.lineTo(b.x + b.width - 5, b.y + 40);
+        ctx.stroke();
+
+        ctx.shadowBlur = 0;
+    }
+
+    function drawGrid() {
+        ctx.strokeStyle = score >= 10 ? 'rgba(0, 255, 255, 0.08)' :
+            score >= 5 ? 'rgba(255, 0, 255, 0.08)' :
+                'rgba(255, 255, 255, 0.05)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < canvas.width; i += 40) {
+            ctx.beginPath();
+            ctx.moveTo(i, 0);
+            ctx.lineTo(i, canvas.height);
+            ctx.stroke();
+        }
+        for (let i = 0; i < canvas.height; i += 40) {
+            ctx.beginPath();
+            ctx.moveTo(0, i);
+            ctx.lineTo(canvas.width, i);
+            ctx.stroke();
+        }
+    }
+
+    function drawSodaCan() {
+        let x = isSodaInAir ? soda.x : (isDragging ? dragCurrentX : soda.startX);
+        let y = isSodaInAir ? soda.y : (isDragging ? dragCurrentY : soda.startY);
+
+        const currentType = canTypes[soda.typeIdx];
+        let glowAmount = 0;
+
+        if (score >= 15 && isSodaInAir) {
+            glowAmount = 30;
+            ctx.shadowColor = '#ffff00';
+        } else if (score >= 10 && isSodaInAir) {
+            glowAmount = 25;
+            ctx.shadowColor = '#00ffff';
+        } else if (score >= 5 && isSodaInAir) {
+            glowAmount = 20;
             ctx.shadowColor = '#ff00ff';
-            ctx.shadowBlur = 5;
-            ctx.fillRect(bbX + 5, 0, 10, b.y);
-            ctx.shadowBlur = 0;
-
-            // Backboard
-            const bbGradient = ctx.createLinearGradient(bbX, b.y - 60, bbX + 8, b.y + 20);
-            bbGradient.addColorStop(0, '#ffffff');
-            bbGradient.addColorStop(1, '#cccccc');
-            ctx.fillStyle = bbGradient;
-            ctx.fillRect(bbX, b.y - 60, 8, 80);
-
-            // Neon stripe
-            ctx.fillStyle = score >= 10 ? '#00ffff' : score >= 5 ? '#ffff00' : '#ff00ff';
-            ctx.shadowColor = ctx.fillStyle;
-            ctx.shadowBlur = 15;
-            ctx.fillRect(bbX, b.y - 18, 8, 8);
-            ctx.shadowBlur = 0;
         }
 
-        function drawRim() {
-            const b = basket;
+        ctx.shadowBlur = glowAmount;
 
-            // Rim glow effect
-            const glowIntensity = score >= 10 ? 25 : score >= 5 ? 20 : 15;
-            ctx.shadowColor = score >= 10 ? '#00ffff' : score >= 5 ? '#ffff00' : '#ff00ff';
-            ctx.shadowBlur = glowIntensity;
+        let rotation = isSodaInAir ? soda.angle : 0;
 
-            // Main rim line
-            ctx.beginPath();
-            ctx.moveTo(b.x, b.y);
-            ctx.lineTo(b.x + b.width, b.y);
-            ctx.lineWidth = 7;
-            ctx.strokeStyle = '#ff6600';
-            ctx.lineCap = 'round';
-            ctx.stroke();
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rotation);
+        ctx.scale(soda.squashX, soda.squashY);
 
-            // Rim highlight
-            ctx.beginPath();
-            ctx.moveTo(b.x, b.y - 1);
-            ctx.lineTo(b.x + b.width, b.y - 1);
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = '#ffaa44';
-            ctx.stroke();
+        // Can body with gradient
+        const canGradient = ctx.createLinearGradient(-soda.width / 2, 0, soda.width / 2, 0);
+        canGradient.addColorStop(0, currentType.color);
+        canGradient.addColorStop(0.5, currentType.color);
+        canGradient.addColorStop(1, '#000000');
+        ctx.fillStyle = canGradient;
+        ctx.fillRect(-soda.width / 2, -soda.height / 2, soda.width, soda.height);
 
-            ctx.shadowBlur = 0;
+        // Metallic rims
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-soda.width / 2, -soda.height / 2, soda.width, 5);
+        ctx.fillRect(-soda.width / 2, soda.height / 2 - 5, soda.width, 5);
 
-            // Hook connector
-            ctx.beginPath();
-            ctx.moveTo(b.x + b.width, b.y);
-            ctx.lineTo(b.x + b.width - 15, b.y + 15);
-            ctx.lineWidth = 4;
-            ctx.strokeStyle = '#cc4400';
-            ctx.stroke();
+        // Shine effect
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.fillRect(-soda.width / 2 + 2, -soda.height / 2 + 8, 4, soda.height - 20);
+
+        // Label
+        ctx.fillStyle = currentType.logo;
+        ctx.shadowColor = currentType.logo;
+        ctx.shadowBlur = 10;
+        ctx.fillRect(-6, -soda.height / 2 + 10, 12, soda.height - 20);
+
+        ctx.restore();
+        ctx.shadowBlur = 0;
+    }
+
+    function drawTrajectory() {
+        let dx = soda.startX - dragCurrentX;
+        let dy = soda.startY - dragCurrentY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > maxDragDistance) {
+            const ratio = maxDragDistance / dist;
+            dx *= ratio;
+            dy *= ratio;
         }
 
-        function drawBasketNetBack() {
-            const b = basket;
+        let simX = soda.startX;
+        let simY = soda.startY;
+        let simVx = dx * forceMultiplier;
+        let simVy = dy * forceMultiplier;
 
-            // Back net shadow
-            ctx.fillStyle = 'rgba(100, 100, 150, 0.2)';
+        const currentType = canTypes[soda.typeIdx];
+        ctx.fillStyle = currentType.glow;
+        ctx.shadowColor = currentType.glow;
+        ctx.shadowBlur = 10;
+
+        for (let i = 0; i < 20; i++) {
+            simX += simVx;
+            simY += simVy;
+            simVy += gravity;
+            ctx.globalAlpha = 1 - (i / 20);
             ctx.beginPath();
-            ctx.moveTo(b.x, b.y);
-            ctx.lineTo(b.x + b.width, b.y);
-            ctx.lineTo(b.x + b.width - 10, b.y + b.height);
-            ctx.lineTo(b.x + 20, b.y + b.height);
+            ctx.arc(simX, simY, 3, 0, Math.PI * 2);
             ctx.fill();
         }
 
-        function drawBasketNetFront() {
-            const b = basket;
+        ctx.globalAlpha = 1.0;
+        ctx.shadowBlur = 0;
 
-            // Net with glow
-            ctx.strokeStyle = score >= 5 ? 'rgba(0, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.9)';
-            ctx.lineWidth = 2;
-            ctx.shadowColor = score >= 5 ? '#00ffff' : '#ffffff';
-            ctx.shadowBlur = score >= 5 ? 10 : 5;
+        // Slingshot line
+        ctx.strokeStyle = currentType.glow;
+        ctx.shadowColor = currentType.glow;
+        ctx.shadowBlur = 15;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(soda.startX, soda.startY);
+        ctx.lineTo(dragCurrentX, dragCurrentY);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+    }
 
-            // Outline
-            ctx.beginPath();
-            ctx.moveTo(b.x, b.y);
-            ctx.lineTo(b.x + 5, b.y + 20);
-            ctx.lineTo(b.x + 10, b.y + 40);
-            ctx.lineTo(b.x + 20, b.y + b.height);
-            ctx.lineTo(b.x + b.width - 10, b.y + b.height);
-            ctx.lineTo(b.x + b.width - 5, b.y + 40);
-            ctx.lineTo(b.x + b.width - 2, b.y + 20);
-            ctx.lineTo(b.x + b.width, b.y);
-            ctx.stroke();
+    function handleFail() {
+        if (!soda.visible) return;
 
-            // Cross hatching
-            ctx.strokeStyle = score >= 5 ? 'rgba(0, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.5)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(b.x + 5, b.y + 20); ctx.lineTo(b.x + b.width - 2, b.y + 20);
-            ctx.moveTo(b.x + 10, b.y + 40); ctx.lineTo(b.x + b.width - 5, b.y + 40);
-            ctx.stroke();
+        // Explosion effect
+        createParticles(soda.x, soda.y, canTypes[soda.typeIdx].color, 25, false, true);
+        createParticles(soda.x, soda.y, '#ffffff', 15, false, true);
+        screenShake(10);
 
-            ctx.shadowBlur = 0;
+        soda.visible = false;
+        score = 0;
+        streak = 0;
+        hasCelebratedThisRun = false;
+
+        // Hide cheerleader
+        document.getElementById('cheerGirl').style.display = 'none';
+        document.getElementById('cheerMessage').style.display = 'none';
+        cheerTimer = 0;
+
+        updateUI();
+
+        setTimeout(() => { resetSoda(); }, 1200);
+    }
+
+    function handleScore() {
+        score++;
+        streak++;
+
+        // Show cheerleader every 4 points
+        if (score > 0 && score % 4 === 0) {
+            showCheerGirl();
         }
 
-        function drawGrid() {
-            ctx.strokeStyle = score >= 10 ? 'rgba(0, 255, 255, 0.08)' :
-                score >= 5 ? 'rgba(255, 0, 255, 0.08)' :
-                    'rgba(255, 255, 255, 0.05)';
-            ctx.lineWidth = 1;
-            for (let i = 0; i < canvas.width; i += 40) {
-                ctx.beginPath();
-                ctx.moveTo(i, 0);
-                ctx.lineTo(i, canvas.height);
-                ctx.stroke();
-            }
-            for (let i = 0; i < canvas.height; i += 40) {
-                ctx.beginPath();
-                ctx.moveTo(0, i);
-                ctx.lineTo(canvas.width, i);
-                ctx.stroke();
-            }
+        // Show combo message
+        if (streak >= 3) {
+            const comboEl = document.getElementById('combo');
+            comboEl.innerText = `${streak}X COMBO!`;
+
+            // Trigger reflow/restart animation
+            comboEl.style.display = 'none';
+            comboEl.offsetHeight;
+            comboEl.style.display = 'block';
+
+            setTimeout(() => { comboEl.style.display = 'none'; }, 1000);
         }
 
-        function drawSodaCan() {
-            let x = isSodaInAir ? soda.x : (isDragging ? dragCurrentX : soda.startX);
-            let y = isSodaInAir ? soda.y : (isDragging ? dragCurrentY : soda.startY);
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem('retroHoopsScore', highScore);
 
-            const currentType = canTypes[soda.typeIdx];
-            let glowAmount = 0;
-
-            if (score >= 15 && isSodaInAir) {
-                glowAmount = 30;
-                ctx.shadowColor = '#ffff00';
-            } else if (score >= 10 && isSodaInAir) {
-                glowAmount = 25;
-                ctx.shadowColor = '#00ffff';
-            } else if (score >= 5 && isSodaInAir) {
-                glowAmount = 20;
-                ctx.shadowColor = '#ff00ff';
-            }
-
-            ctx.shadowBlur = glowAmount;
-
-            let rotation = isSodaInAir ? soda.angle : 0;
-
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.rotate(rotation);
-            ctx.scale(soda.squashX, soda.squashY);
-
-            // Can body with gradient
-            const canGradient = ctx.createLinearGradient(-soda.width / 2, 0, soda.width / 2, 0);
-            canGradient.addColorStop(0, currentType.color);
-            canGradient.addColorStop(0.5, currentType.color);
-            canGradient.addColorStop(1, '#000000');
-            ctx.fillStyle = canGradient;
-            ctx.fillRect(-soda.width / 2, -soda.height / 2, soda.width, soda.height);
-
-            // Metallic rims
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(-soda.width / 2, -soda.height / 2, soda.width, 5);
-            ctx.fillRect(-soda.width / 2, soda.height / 2 - 5, soda.width, 5);
-
-            // Shine effect
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-            ctx.fillRect(-soda.width / 2 + 2, -soda.height / 2 + 8, 4, soda.height - 20);
-
-            // Label
-            ctx.fillStyle = currentType.logo;
-            ctx.shadowColor = currentType.logo;
-            ctx.shadowBlur = 10;
-            ctx.fillRect(-6, -soda.height / 2 + 10, 12, soda.height - 20);
-
-            ctx.restore();
-            ctx.shadowBlur = 0;
+            // Simple new record message
+            celebrationTimer = 90;
+            document.getElementById('recordMsg').style.display = 'block';
+            createParticles(canvas.width / 2, canvas.height / 2, '#ffff00', 30, false, true);
+            createParticles(canvas.width / 2, canvas.height / 2, '#ff00ff', 20, false, true);
+            screenShake(12);
+            hasCelebratedThisRun = true;
         }
 
-        function drawTrajectory() {
-            let dx = soda.startX - dragCurrentX;
-            let dy = soda.startY - dragCurrentY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist > maxDragDistance) {
-                const ratio = maxDragDistance / dist;
-                dx *= ratio;
-                dy *= ratio;
-            }
+        // Score particles
+        createParticles(basket.x + basket.width / 2, basket.y + 30, canTypes[soda.typeIdx].glow, 20);
+        screenShake(5);
 
-            let simX = soda.startX;
-            let simY = soda.startY;
-            let simVx = dx * forceMultiplier;
-            let simVy = dy * forceMultiplier;
+        // Increase difficulty
+        basket.speed = Math.min(Math.abs(basket.speed * 1.08), 8);
+        if (Math.random() > 0.5) basket.direction *= -1;
 
-            const currentType = canTypes[soda.typeIdx];
-            ctx.fillStyle = currentType.glow;
-            ctx.shadowColor = currentType.glow;
-            ctx.shadowBlur = 10;
+        soda.typeIdx = (soda.typeIdx + 1) % canTypes.length;
 
-            for (let i = 0; i < 20; i++) {
-                simX += simVx;
-                simY += simVy;
-                simVy += gravity;
-                ctx.globalAlpha = 1 - (i / 20);
-                ctx.beginPath();
-                ctx.arc(simX, simY, 3, 0, Math.PI * 2);
-                ctx.fill();
-            }
+        updateUI();
+        resetSoda();
+    }
 
-            ctx.globalAlpha = 1.0;
-            ctx.shadowBlur = 0;
+    function resetSoda() {
+        isSodaInAir = false;
+        soda.visible = true;
+        soda.vx = 0;
+        soda.vy = 0;
+        soda.x = soda.startX;
+        soda.y = soda.startY;
+        soda.angle = 0;
+        soda.angularVelocity = 0;
+        soda.squashX = 1;
+        soda.squashY = 1;
+    }
 
-            // Slingshot line
-            ctx.strokeStyle = currentType.glow;
-            ctx.shadowColor = currentType.glow;
-            ctx.shadowBlur = 15;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(soda.startX, soda.startY);
-            ctx.lineTo(dragCurrentX, dragCurrentY);
-            ctx.stroke();
-            ctx.shadowBlur = 0;
+    function updateUI() {
+        document.getElementById('scoreVal').innerText = score;
+        document.getElementById('highScoreVal').innerText = highScore;
+
+        // Dynamic Score Coloring
+        const scoreEl = document.getElementById('scoreVal');
+        if (score >= 10) scoreEl.style.color = '#00ffff';
+        else if (score >= 5) scoreEl.style.color = '#ff00ff';
+        else scoreEl.style.color = '#fff';
+
+        // Update Streak Display
+        const streakEl = document.getElementById('streak');
+        if (streak > 1) {
+            streakEl.innerText = 'STREAK: ' + streak;
+            streakEl.style.color = streak >= 5 ? '#ff00ff' : '#ffff00';
+        } else {
+            streakEl.innerText = '';
         }
+    }
 
-        function handleFail() {
-            if (!soda.visible) return;
+    function onDown(e) {
+        if (isSodaInAir || !soda.visible) return;
+        const rect = canvas.getBoundingClientRect();
+        const cX = e.clientX || e.touches[0].clientX;
+        const cY = e.clientY || e.touches[0].clientY;
+        const x = cX - rect.left;
+        const y = cY - rect.top;
 
-            // Explosion effect
-            createParticles(soda.x, soda.y, canTypes[soda.typeIdx].color, 25, false, true);
-            createParticles(soda.x, soda.y, '#ffffff', 15, false, true);
-            screenShake(10);
-
-            soda.visible = false;
-            score = 0;
-            streak = 0;
-            hasCelebratedThisRun = false;
-            currentCheerGirl = 'girl1'; // Reset to girl1
-
-            // Hide cheerleader
-            document.getElementById('cheerGirl').style.display = 'none';
-            document.getElementById('cheerMessage').style.display = 'none';
-            cheerTimer = 0;
-
-            updateUI();
-
-            setTimeout(() => { resetSoda(); }, 1200);
+        if (Math.sqrt((x - soda.startX) ** 2 + (y - soda.startY) ** 2) < 80) {
+            isDragging = true;
+            dragCurrentX = x;
+            dragCurrentY = y;
         }
+    }
 
-        function handleScore() {
-            score++;
-            streak++;
+    function onMove(e) {
+        if (!isDragging) return;
+        const rect = canvas.getBoundingClientRect();
+        const cX = e.clientX || e.touches[0].clientX;
+        const cY = e.clientY || e.touches[0].clientY;
+        dragCurrentX = cX - rect.left;
+        dragCurrentY = cY - rect.top;
+    }
 
-            // Show cheerleader every 4 points
-            if (score > 0 && score % 4 === 0) {
-                showCheerGirl();
-            }
-
-            // Show combo message
-            if (streak >= 3) {
-                const comboEl = document.getElementById('combo');
-                comboEl.innerText = `${streak}X COMBO!`;
-                comboEl.style.display = 'block';
-                setTimeout(() => { comboEl.style.display = 'none'; }, 1000);
-            }
-
-            if (score > highScore) {
-                highScore = score;
-                localStorage.setItem('retroHoopsScore', highScore);
-
-                // Simple new record message
-                celebrationTimer = 90;
-                document.getElementById('recordMsg').style.display = 'block';
-                createParticles(canvas.width / 2, canvas.height / 2, '#ffff00', 30, false, true);
-                createParticles(canvas.width / 2, canvas.height / 2, '#ff00ff', 20, false, true);
-                screenShake(12);
-                hasCelebratedThisRun = true;
-            }
-
-            // Score particles
-            createParticles(basket.x + basket.width / 2, basket.y + 30, canTypes[soda.typeIdx].glow, 20);
-            screenShake(5);
-
-            // Increase difficulty
-            basket.speed = Math.min(Math.abs(basket.speed * 1.08), 8);
-            if (Math.random() > 0.5) basket.direction *= -1;
-
-            soda.typeIdx = (soda.typeIdx + 1) % canTypes.length;
-
-            updateUI();
-            resetSoda();
+    function onUp(e) {
+        if (!isDragging) return;
+        isDragging = false;
+        let dx = soda.startX - dragCurrentX;
+        let dy = soda.startY - dragCurrentY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > maxDragDistance) {
+            const ratio = maxDragDistance / dist;
+            dx *= ratio;
+            dy *= ratio;
         }
+        soda.x = soda.startX;
+        soda.y = soda.startY;
+        soda.vx = dx * forceMultiplier;
+        soda.vy = dy * forceMultiplier;
+        isSodaInAir = true;
+    }
 
-        function resetSoda() {
-            isSodaInAir = false;
-            soda.visible = true;
-            soda.vx = 0;
-            soda.vy = 0;
-            soda.x = soda.startX;
-            soda.y = soda.startY;
-            soda.angle = 0;
-            soda.angularVelocity = 0;
-            soda.squashX = 1;
-            soda.squashY = 1;
-        }
+    canvas.addEventListener('mousedown', onDown);
+    canvas.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    canvas.addEventListener('touchstart', onDown, { passive: false });
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); onMove(e); }, { passive: false });
+    window.addEventListener('touchend', onUp);
 
-        function updateUI() {
-            document.getElementById('scoreVal').innerText = score;
-            document.getElementById('highScoreVal').innerText = highScore;
+    function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+    }
+    loop();
 
-            const scoreEl = document.getElementById('scoreVal');
-            if (score >= 15) scoreEl.style.color = '#ffff00';
-            else if (score >= 10) scoreEl.style.color = '#00ffff';
-            else if (score >= 5) scoreEl.style.color = '#ff00ff';
-            else scoreEl.style.color = '#00ffff';
-
-            const streakEl = document.getElementById('streak');
-            if (streak >= 3) {
-                streakEl.innerText = `🔥 ${streak}X STREAK! 🔥`;
-                streakEl.style.display = 'block';
-            } else {
-                streakEl.style.display = 'none';
-            }
-        }
-
-        function onDown(e) {
-            if (isSodaInAir || !soda.visible) return;
-            const rect = canvas.getBoundingClientRect();
-            const cX = e.clientX || e.touches[0].clientX;
-            const cY = e.clientY || e.touches[0].clientY;
-            const x = cX - rect.left;
-            const y = cY - rect.top;
-
-            if (Math.sqrt((x - soda.startX) ** 2 + (y - soda.startY) ** 2) < 90) {
-                isDragging = true;
-                dragCurrentX = x;
-                dragCurrentY = y;
-            }
-        }
-
-        function onMove(e) {
-            if (!isDragging) return;
-            const rect = canvas.getBoundingClientRect();
-            const cX = e.clientX || e.touches[0].clientX;
-            const cY = e.clientY || e.touches[0].clientY;
-            dragCurrentX = cX - rect.left;
-            dragCurrentY = cY - rect.top;
-        }
-
-        function onUp(e) {
-            if (!isDragging) return;
-            isDragging = false;
-
-            let dx = soda.startX - dragCurrentX;
-            let dy = soda.startY - dragCurrentY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
-            if (dist > maxDragDistance) {
-                const ratio = maxDragDistance / dist;
-                dx *= ratio;
-                dy *= ratio;
-            }
-
-            soda.x = soda.startX;
-            soda.y = soda.startY;
-            soda.vx = dx * forceMultiplier;
-            soda.vy = dy * forceMultiplier;
-            isSodaInAir = true;
-
-            // Launch particles
-            createParticles(soda.x, soda.y, canTypes[soda.typeIdx].glow, 12);
-        }
-
-        canvas.addEventListener('mousedown', onDown);
-        canvas.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup', onUp);
-        canvas.addEventListener('touchstart', onDown, { passive: false });
-        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); onMove(e); }, { passive: false });
-        window.addEventListener('touchend', onUp);
-
-        function loop() {
-            update();
-            draw();
-            requestAnimationFrame(loop);
-        }
-        loop();
-
-    </script>
-</body>
-
-</html>
+</script>
