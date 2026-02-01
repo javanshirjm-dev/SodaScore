@@ -259,7 +259,6 @@
             right: 30px;
             background: rgba(255, 0, 255, 0.95);
             padding: 12px 20px;
-            border-radius: 25px;
             font-size: 11px;
             color: #fff;
             white-space: nowrap;
@@ -333,9 +332,10 @@
         let cheerTimer = 0;
         let currentCheerGirl = 'girl1'; // 'girl1' or 'girl2'
 
-        // Girl images
-        const girl1URL = 'https://img.itch.zone/aW1nLzE0Mjc1Mzk3LnBuZw==/original/cwyNbd.png';
-        const girl2URL = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTU3mr-hyRiqUZ82QeWULYtEPmvM9hBGVvdYw&s';
+        // --- UPDATED GIRL LOGIC ---
+        // Make sure you saved the generated image as 'girl.png' in the same folder!
+        const girl1URL = 'girl.png';
+        const girl2URL = 'hot.png';
 
         // --- PRELOAD IMAGES ---
         const preload1 = new Image();
@@ -401,7 +401,7 @@
 
         function showCheerGirl() {
             const messages = [
-                'GOOD JOB!', 'EXCELLENT!', 'AMAZING!', 'FANTASTIC!',
+                'GOOD BOY!', 'EXCELLENT!', 'AMAZING!', 'FANTASTIC!',
                 'KEEP IT UP!', 'ON FIRE!', 'INCREDIBLE!', 'PERFECT!'
             ];
 
@@ -410,10 +410,10 @@
             const cheerMsg = document.getElementById('cheerMessage');
 
             // Determine which girl to show based on score
-            if (score >= 20 && currentCheerGirl !== 'girl2') {
+            if (score >= 9 && currentCheerGirl !== 'girl2') {
                 currentCheerGirl = 'girl2';
                 cheerImg.src = girl2URL;
-            } else if (score < 20 && currentCheerGirl !== 'girl1') {
+            } else if (score < 9 && currentCheerGirl !== 'girl1') {
                 currentCheerGirl = 'girl1';
                 cheerImg.src = girl1URL;
             } else if (!cheerImg.src) {
@@ -1086,6 +1086,17 @@
             draw();
             requestAnimationFrame(loop);
         }
+
+        // --- NEW STARTUP LOGIC ---
+        // Trigger the girl to appear immediately with the message
+        const startImg = document.getElementById('cheerGirl');
+        const startMsg = document.getElementById('cheerMessage');
+        startImg.src = girl1URL;
+        startMsg.innerText = "LET'S START!";
+        startImg.style.display = 'block';
+        startMsg.style.display = 'block';
+        cheerTimer = 180; // Show for about 3 seconds
+
         loop();
 
     </script>
