@@ -334,8 +334,14 @@
         let currentCheerGirl = 'girl1'; // 'girl1' or 'girl2'
 
         // Girl images
-        const girl1URL = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRBd5wDuOOeOlnTo3y9zT_ariic38Wpj8nonw&s';
+        const girl1URL = 'https://img.itch.zone/aW1nLzE0Mjc1Mzk3LnBuZw==/original/cwyNbd.png';
         const girl2URL = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTU3mr-hyRiqUZ82QeWULYtEPmvM9hBGVvdYw&s';
+
+        // --- PRELOAD IMAGES ---
+        const preload1 = new Image();
+        preload1.src = girl1URL;
+        const preload2 = new Image();
+        preload2.src = girl2URL;
 
         // Slingshot Logic
         let isDragging = false;
@@ -548,8 +554,17 @@
                     createParticles(soda.x, soda.y, fireColor, Math.floor(intensity), true);
                 }
 
+                // --- LEFT WALL REFLECTION LOGIC ---
+                if (soda.x < 13) {
+                    soda.x = 13;
+                    soda.vx = -soda.vx * 0.8;
+                    soda.angularVelocity = -soda.angularVelocity;
+                    createParticles(0, soda.y, '#ffffff', 8);
+                    screenShake(2);
+                }
+
                 // Fail Condition
-                if (soda.y > canvas.height + 20 || soda.x > canvas.width + 50 || soda.x < -50) {
+                if (soda.y > canvas.height + 20 || soda.x > canvas.width + 50) {
                     handleFail();
                 }
 
@@ -632,15 +647,14 @@
             ctx.fillRect(soda.startX - 25, soda.startY + 25, 50, 8);
             ctx.shadowBlur = 0;
 
-            // Draw Trails
+            // Draw Trails (PIXEL STYLE)
             for (let t of trails) {
                 ctx.globalAlpha = t.life * 0.6;
                 ctx.fillStyle = t.color;
                 ctx.shadowColor = t.color;
                 ctx.shadowBlur = 15;
-                ctx.beginPath();
-                ctx.arc(t.x, t.y, t.size, 0, Math.PI * 2);
-                ctx.fill();
+                // CHANGED: Using fillRect for retro pixel look instead of arc
+                ctx.fillRect(t.x - t.size / 2, t.y - t.size / 2, t.size, t.size);
             }
             ctx.globalAlpha = 1.0;
             ctx.shadowBlur = 0;
@@ -880,14 +894,21 @@
             ctx.shadowColor = currentType.glow;
             ctx.shadowBlur = 10;
 
-            for (let i = 0; i < 20; i++) {
+            // Increased steps to 30 to see the wall bounce clearly
+            for (let i = 0; i < 30; i++) {
                 simX += simVx;
                 simY += simVy;
                 simVy += gravity;
-                ctx.globalAlpha = 1 - (i / 20);
-                ctx.beginPath();
-                ctx.arc(simX, simY, 3, 0, Math.PI * 2);
-                ctx.fill();
+
+                // BOUNCE SIMULATION: Mirroring the update loop logic
+                if (simX < 13) {
+                    simX = 13;
+                    simVx = -simVx * 0.8;
+                }
+
+                ctx.globalAlpha = 1 - (i / 30);
+                // CHANGED: Drawing square pixels for the aiming line too
+                ctx.fillRect(simX - 3, simY - 3, 6, 6);
             }
 
             ctx.globalAlpha = 1.0;
