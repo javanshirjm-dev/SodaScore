@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Side View Hoops</title>
+    <style>
+        body {
+            margin: 0;
+            background: #050505;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: white;
+            font-family: 'Verdana', sans-serif;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        canvas {
+            /* Street Night Gradient */
+            background: linear-gradient(to bottom, #2c3e50, #000000);
+            border: 2px solid #555;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+            cursor: crosshair;
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 50px;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 3px 3px 0 #000;
+        }
+
+        .label {
+            font-size: 12px;
+            color: #aaa;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        #recordMsg {
+            position: absolute;
+            top: 40%;
+            width: 100%;
+            text-align: center;
+            font-size: 60px;
+            font-weight: bold;
+            color: #f1c40f;
+            text-shadow: 0 0 20px #e67e22;
+            display: none;
+            z-index: 20;
+            animation: pop 0.5s ease-out;
+        }
+
+        @keyframes pop {
+            0% {
+                transform: scale(0);
+            }
+
+            70% {
+                transform: scale(1.2);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="ui">
+        <div class="label">SCORE</div>
+        <h1><span id="scoreVal">0</span></h1>
+        <div class="label" style="margin-top: 5px;">BEST: <span id="highScoreVal">0</span></div>
+    </div>
+
+    <div id="recordMsg">NEW RECORD!</div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 1. Setup Canvas
+        canvas.width = 400;
+        canvas.height = 600;
+
+        let savedScore = localStorage.getItem('sodaHighScore');
+        let highScore = savedScore ? parseInt(savedScore) : 0;
+        document.getElementById('highScoreVal').innerText = highScore;
+
+        // 2. Game Variables
+        let score = 0;
+        let gravity = 0.5;
+        let friction = 0.99;
+        let isSodaInAir = false;
+        let particles = [];
+        let celebrationTimer = 0;
+        let hasCelebratedThisRun = false;
+
+        // Slingshot Logic
+        let isDragging = false;
+        let dragCurrentX = 0;
+        let dragCurrentY = 0;
+        const forceMultiplier = 0.18;
+        const maxDragDistance = 120;
+
+        // --- SODA TYPES ---
+        const canTypes = [
+            { name: 'Cola', color: '#c0392b', logo: '#fff' },
+            { name: 'Orange', color: '#e67e22', logo: '#2980b9' },
+            { name: 'Lemon', color: '#f1c40f', logo: '#27ae60' },
+            { name: 'Grape', color: '#8e44ad', logo: '#fff' },
+            { name: 'Blue', color: '#2980b9', logo: '#fff' }
+        ];
+
+        const soda = {
+            x: 60,
+            y: canvas.height - 150,
+            width: 24,
+            height: 40,
+            radius: 12,
+            angle: 0,
+            typeIdx: 0,
+            vx: 0,
+            vy: 0,
+            startX: 60,
+            startY: canvas.height - 150,
+            visible: true
+        };
+
+        // --- BASKET (SIDE VIEW) ---
+        // x = The LEFT TIP of the rim (the part facing the ball)
+        const basket = {
+            x: 280,
+            y: 200,
+            width: 80, // Distance from Rim Tip to Backboard
+            height: 60,
+            speed: 2,
+            direction: 1
+        };
+
+        function createParticles(x, y, color, count, isFire = false) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x + (Math.random() * 10 - 5),
+                    y: y + (Math.random() * 10 - 5),
+                    vx: isFire ? (Math.random() - 0.5) * 2 : (Math.random() - 0.5) * 15,
+                    vy: isFire ? (Math.random() * -3 - 1) : (Math.random() - 0.5) * 15,
+                    life: 1.0,
+                    color: color,
+                    size: Math.random() * 6 + 2,
+                    isFire: isFire
+                });
+            }
+        }
+
+        function update() {
+            if (celebrationTimer > 0) celebrationTimer--;
+            if (celebrationTimer === 0) document.getElementById('recordMsg').style.display = 'none';
+
+            // Move Basket
+            basket.y += basket.speed * basket.direction;
+            if (basket.y > canvas.height - 150 || basket.y < 50) {
+                basket.direction *= -1;
+            }
+
+            // Update Particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                if (!p.isFire) p.vy += gravity;
+                p.life -= p.isFire ? 0.05 : 0.03;
+                p.size *= 0.95;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            // Move Soda
+            if (isSodaInAir && soda.visible) {
+                soda.x += soda.vx;
+                soda.y += soda.vy;
+                soda.vy += gravity;
+                soda.vx *= friction;
+                soda.angle += 0.15;
+
+                // Fire Logic
+                if (score >= 5) {
+                    let fireColor = score >= 10 ? '#00d2d3' : '#e67e22';
+                    let intensity = score >= 10 ? 3 : 1;
+                    createParticles(soda.x, soda.y, fireColor, intensity, true);
+                }
+
+                // --- FAIL CONDITION ---
+                if (soda.y > canvas.height - 20 || soda.x > canvas.width + 50 || soda.x < -50) {
+                    handleFail();
+                }
+
+                // --- COLLISION PHYSICS (SIDE VIEW) ---
+
+                // 1. Hit the FRONT RIM TIP (The little nub on the left)
+                // Distance check to point (basket.x, basket.y)
+                let dx = soda.x - basket.x;
+                let dy = soda.y - basket.y;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < 15) { // Hit the metal rim tip
+                    soda.vx = -Math.abs(soda.vx * 0.7) - 2; // Bounce LEFT hard
+                    soda.vy *= -0.7; // Bounce Vertically
+                    soda.x -= 2; // Push out
+                }
+
+                // 2. Hit the BACKBOARD (Vertical Wall)
+                // The backboard is at basket.x + basket.width
+                let backboardX = basket.x + basket.width;
+
+                // If ball is near backboard X and within backboard Y height
+                if (soda.x + soda.width / 2 > backboardX - 5 && soda.x < backboardX + 10) {
+                    if (soda.y > basket.y - 50 && soda.y < basket.y + 30) {
+                        soda.vx = -Math.abs(soda.vx * 0.6); // Bounce Left
+                        soda.x = backboardX - 5 - soda.width / 2; // Push out
+                    }
+                }
+
+                // --- SCORING CONDITION ---
+                // Must pass downward through the line between RimTip and Backboard
+                if (soda.vy > 0) { // Falling
+                    // Is X between Rim and Backboard?
+                    if (soda.x > basket.x + 5 && soda.x < basket.x + basket.width - 5) {
+                        // Is Y crossing the rim line?
+                        // We use a small threshold to catch the frame it crosses
+                        if (soda.y > basket.y && soda.y < basket.y + 15) {
+                            handleScore();
+                        }
+                    }
+                }
+            }
+        }
+
+        function draw() {
+            ctx.fillStyle = '#111';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            drawGrid();
+
+            // Launcher
+            ctx.fillStyle = '#444';
+            ctx.fillRect(soda.startX - 20, soda.startY + 20, 40, 10);
+
+            // Particles
+            for (let p of particles) {
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1.0;
+
+            if (isDragging && !isSodaInAir && soda.visible) drawTrajectory();
+
+            // --- DRAW BASKET (SIDE VIEW) ---
+            // Layers: Back Net -> Backboard -> Soda -> Front Net -> Rim
+
+            drawBasketNetBack();
+            drawBackboard();
+
+            if (soda.visible) drawSodaCan();
+
+            drawBasketNetFront();
+            drawRim();
+        }
+
+        function drawBackboard() {
+            const b = basket;
+            const bbX = b.x + b.width;
+
+            // Pole
+            ctx.fillStyle = '#7f8c8d';
+            ctx.fillRect(bbX + 5, 0, 10, b.y); // Wall mount
+
+            // Backboard (Side view is a thin rectangle)
+            ctx.fillStyle = '#ecf0f1';
+            ctx.fillRect(bbX, b.y - 60, 8, 80);
+
+            // Orange Stripe on side of backboard
+            ctx.fillStyle = '#e67e22';
+            ctx.fillRect(bbX, b.y - 15, 8, 5);
+        }
+
+        function drawRim() {
+            const b = basket;
+
+            // The Rim Line (Side View)
+            ctx.beginPath();
+            ctx.moveTo(b.x, b.y); // Tip
+            ctx.lineTo(b.x + b.width, b.y); // Connect to backboard
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = '#e67e22'; // Orange
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            // The "Hook" connector
+            ctx.beginPath();
+            ctx.moveTo(b.x + b.width, b.y);
+            ctx.lineTo(b.x + b.width - 15, b.y + 15);
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = '#d35400';
+            ctx.stroke();
+        }
+
+        function drawBasketNetBack() {
+            const b = basket;
+            ctx.beginPath();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; // Faint back net
+
+            // Trapezoid shape
+            ctx.moveTo(b.x, b.y);
+            ctx.lineTo(b.x + b.width, b.y);
+            ctx.lineTo(b.x + b.width - 10, b.y + b.height);
+            ctx.lineTo(b.x + 20, b.y + b.height);
+            ctx.fill();
+        }
+
+        function drawBasketNetFront() {
+            const b = basket;
+            ctx.beginPath();
+
+            // Net Outline
+            ctx.moveTo(b.x, b.y); // Top Left
+            // Zig Zag down left side
+            ctx.lineTo(b.x + 5, b.y + 20);
+            ctx.lineTo(b.x + 10, b.y + 40);
+            ctx.lineTo(b.x + 20, b.y + b.height); // Bottom Left
+
+            // Bottom Line
+            ctx.lineTo(b.x + b.width - 10, b.y + b.height); // Bottom Right
+
+            // Zig Zag up right side
+            ctx.lineTo(b.x + b.width - 5, b.y + 40);
+            ctx.lineTo(b.x + b.width - 2, b.y + 20);
+            ctx.lineTo(b.x + b.width, b.y); // Top Right
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Cross hatching for net look
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 1;
+            // Horizontal rings
+            ctx.moveTo(b.x + 5, b.y + 20); ctx.lineTo(b.x + b.width - 2, b.y + 20);
+            ctx.moveTo(b.x + 10, b.y + 40); ctx.lineTo(b.x + b.width - 5, b.y + 40);
+            ctx.stroke();
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.width; i += 50) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            }
+            for (let i = 0; i < canvas.height; i += 50) {
+                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+            }
+        }
+
+        function drawSodaCan() {
+            let x = isSodaInAir ? soda.x : (isDragging ? dragCurrentX : soda.startX);
+            let y = isSodaInAir ? soda.y : (isDragging ? dragCurrentY : soda.startY);
+
+            if (score >= 10 && isSodaInAir) {
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#00d2d3';
+            } else if (score >= 5 && isSodaInAir) {
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#e67e22';
+            }
+
+            let rotation = isSodaInAir ? soda.angle : 0;
+            const currentType = canTypes[soda.typeIdx];
+
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rotation);
+
+            // Can
+            ctx.fillStyle = currentType.color;
+            ctx.fillRect(-soda.width / 2, -soda.height / 2, soda.width, soda.height);
+            // Silver Rims
+            ctx.fillStyle = '#ccc';
+            ctx.fillRect(-soda.width / 2, -soda.height / 2, soda.width, 4);
+            ctx.fillRect(-soda.width / 2, soda.height / 2 - 4, soda.width, 4);
+            // Label
+            ctx.fillStyle = currentType.logo;
+            ctx.fillRect(-5, -soda.height / 2 + 8, 10, soda.height - 16);
+
+            ctx.restore();
+            ctx.shadowBlur = 0;
+        }
+
+        function drawTrajectory() {
+            let dx = soda.startX - dragCurrentX;
+            let dy = soda.startY - dragCurrentY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > maxDragDistance) {
+                const ratio = maxDragDistance / dist;
+                dx *= ratio; dy *= ratio;
+            }
+
+            let simX = soda.startX;
+            let simY = soda.startY;
+            let simVx = dx * forceMultiplier;
+            let simVy = dy * forceMultiplier;
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            for (let i = 0; i < 15; i++) {
+                simX += simVx;
+                simY += simVy;
+                simVy += gravity;
+                ctx.beginPath();
+                ctx.arc(simX, simY, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.beginPath();
+            ctx.strokeStyle = '#fff';
+            ctx.moveTo(soda.startX, soda.startY);
+            ctx.lineTo(dragCurrentX, dragCurrentY);
+            ctx.stroke();
+        }
+
+        function handleFail() {
+            if (!soda.visible) return;
+            createParticles(soda.x, soda.y, canTypes[soda.typeIdx].color, 15, false);
+            soda.visible = false;
+            score = 0;
+            hasCelebratedThisRun = false;
+            updateUI();
+            setTimeout(() => { resetSoda(); }, 1000);
+        }
+
+        function handleScore() {
+            score++;
+
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('sodaHighScore', highScore);
+
+                if (!hasCelebratedThisRun) {
+                    celebrationTimer = 100;
+                    document.getElementById('recordMsg').style.display = 'block';
+                    createParticles(canvas.width / 2, canvas.height / 2, '#f1c40f', 50, false);
+                    hasCelebratedThisRun = true;
+                }
+            }
+
+            // Particles from net
+            createParticles(basket.x + basket.width / 2, basket.y + 20, '#fff', 10, false);
+
+            basket.speed = Math.abs(basket.speed * 1.05);
+            if (Math.random() > 0.5) basket.direction *= -1;
+            soda.typeIdx = (soda.typeIdx + 1) % canTypes.length;
+
+            updateUI();
+            resetSoda();
+        }
+
+        function resetSoda() {
+            isSodaInAir = false;
+            soda.visible = true;
+            soda.vx = 0;
+            soda.vy = 0;
+            soda.x = soda.startX;
+            soda.y = soda.startY;
+            soda.angle = 0;
+        }
+
+        function updateUI() {
+            document.getElementById('scoreVal').innerText = score;
+            document.getElementById('highScoreVal').innerText = highScore;
+            const scoreEl = document.getElementById('scoreVal');
+            if (score >= 10) scoreEl.style.color = '#00d2d3';
+            else if (score >= 5) scoreEl.style.color = '#e67e22';
+            else scoreEl.style.color = '#fff';
+        }
+
+        function onDown(e) {
+            if (isSodaInAir || !soda.visible) return;
+            const rect = canvas.getBoundingClientRect();
+            const cX = e.clientX || e.touches[0].clientX;
+            const cY = e.clientY || e.touches[0].clientY;
+            const x = cX - rect.left;
+            const y = cY - rect.top;
+
+            if (Math.sqrt((x - soda.startX) ** 2 + (y - soda.startY) ** 2) < 80) {
+                isDragging = true;
+                dragCurrentX = x;
+                dragCurrentY = y;
+            }
+        }
+
+        function onMove(e) {
+            if (!isDragging) return;
+            const rect = canvas.getBoundingClientRect();
+            const cX = e.clientX || e.touches[0].clientX;
+            const cY = e.clientY || e.touches[0].clientY;
+            dragCurrentX = cX - rect.left;
+            dragCurrentY = cY - rect.top;
+        }
+
+        function onUp(e) {
+            if (!isDragging) return;
+            isDragging = false;
+            let dx = soda.startX - dragCurrentX;
+            let dy = soda.startY - dragCurrentY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > maxDragDistance) {
+                const ratio = maxDragDistance / dist;
+                dx *= ratio; dy *= ratio;
+            }
+            soda.x = soda.startX;
+            soda.y = soda.startY;
+            soda.vx = dx * forceMultiplier;
+            soda.vy = dy * forceMultiplier;
+            isSodaInAir = true;
+        }
+
+        canvas.addEventListener('mousedown', onDown);
+        canvas.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        canvas.addEventListener('touchstart', onDown, { passive: false });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); onMove(e); }, { passive: false });
+        window.addEventListener('touchend', onUp);
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+        loop();
+
+    </script>
+</body>
+
+</html>
