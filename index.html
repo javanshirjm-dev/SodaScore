@@ -225,36 +225,62 @@
             z-index: 10;
         }
 
-        #cheerleaders {
+        #cheerGirl {
             position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1;
+            bottom: 20px;
+            right: 20px;
+            width: 150px;
+            height: auto;
+            display: none;
+            z-index: 15;
+            animation: cheerAppear 0.6s ease-out;
+            filter: drop-shadow(0 0 20px rgba(255, 0, 255, 0.8));
         }
 
-        .pixel-cheerleader {
-            position: absolute;
-            bottom: 15px;
-            image-rendering: pixelated;
-            animation: cheerJump 0.5s ease-out;
-        }
-
-        @keyframes cheerJump {
+        @keyframes cheerAppear {
             0% {
-                transform: translateY(40px) scale(0);
+                transform: translateY(50px) scale(0);
                 opacity: 0;
             }
 
             60% {
-                transform: translateY(-8px) scale(1.05);
+                transform: translateY(-10px) scale(1.1);
             }
 
             100% {
                 transform: translateY(0) scale(1);
                 opacity: 1;
+            }
+        }
+
+        #cheerMessage {
+            position: absolute;
+            bottom: 180px;
+            right: 30px;
+            background: rgba(255, 0, 255, 0.95);
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-size: 11px;
+            color: #fff;
+            white-space: nowrap;
+            border: 3px solid #00ffff;
+            box-shadow: 0 0 30px #ff00ff;
+            display: none;
+            z-index: 16;
+            animation: messageBounce 0.5s ease-out;
+        }
+
+        @keyframes messageBounce {
+            0% {
+                transform: scale(0) rotate(-5deg);
+            }
+
+            60% {
+                transform: scale(1.15) rotate(2deg);
+            }
+
+            100% {
+                transform: scale(1) rotate(0deg);
             }
         }
     </style>
@@ -263,8 +289,6 @@
 <body>
 
     <div id="gameContainer">
-        <div id="cheerleaders"></div>
-
         <div id="ui">
             <h1>RETRO HOOPS</h1>
             <div class="label">SCORE</div>
@@ -275,6 +299,9 @@
         <div id="streak"></div>
         <div id="combo">COMBO!</div>
         <div id="recordMsg">★ NEW RECORD! ★</div>
+
+        <img id="cheerGirl" src="" alt="Cheerleader">
+        <div id="cheerMessage">GOOD JOB!</div>
 
         <canvas id="gameCanvas"></canvas>
     </div>
@@ -303,7 +330,12 @@
         let hasCelebratedThisRun = false;
         let shakeAmount = 0;
         let backgroundStars = [];
-        let cheerleaders = [];
+        let cheerTimer = 0;
+        let currentCheerGirl = 'girl1'; // 'girl1' or 'girl2'
+
+        // Girl images
+        const girl1URL = 'https://pics.craiyon.com/2023-11-15/glyfPcElSSuyaQv45t2DzQ.webp';
+        const girl2URL = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTU3mr-hyRiqUZ82QeWULYtEPmvM9hBGVvdYw&s';
 
         // Slingshot Logic
         let isDragging = false;
@@ -350,12 +382,6 @@
             targetY: 200
         };
 
-        // Cheerleader colors
-        const cheerColors = [
-            '#ff00ff', '#00ffff', '#ffff00', '#ff0080', '#00ff00',
-            '#ff6600', '#0080ff', '#ff0000', '#80ff00', '#ff00aa'
-        ];
-
         // Initialize Stars
         for (let i = 0; i < 50; i++) {
             backgroundStars.push({
@@ -367,70 +393,34 @@
             });
         }
 
-        function createPixelCheerleader(color) {
-            const x = Math.random() * (canvas.width - 60) + 30;
-            const cheerEl = document.createElement('canvas');
-            cheerEl.width = 24;
-            cheerEl.height = 32;
-            cheerEl.className = 'pixel-cheerleader';
-            cheerEl.style.left = x + 'px';
+        function showCheerGirl() {
+            const messages = [
+                'GOOD JOB!', 'EXCELLENT!', 'AMAZING!', 'FANTASTIC!',
+                'KEEP IT UP!', 'ON FIRE!', 'INCREDIBLE!', 'PERFECT!'
+            ];
 
-            const ctx = cheerEl.getContext('2d');
-            ctx.imageSmoothingEnabled = false;
+            const message = messages[Math.floor(Math.random() * messages.length)];
+            const cheerImg = document.getElementById('cheerGirl');
+            const cheerMsg = document.getElementById('cheerMessage');
 
-            // Draw pixel art cheerleader
-            // Hair
-            ctx.fillStyle = color;
-            ctx.fillRect(7, 4, 10, 3);
-            ctx.fillRect(6, 7, 12, 4);
+            // Determine which girl to show based on score
+            if (score >= 20 && currentCheerGirl !== 'girl2') {
+                currentCheerGirl = 'girl2';
+                cheerImg.src = girl2URL;
+            } else if (score < 20 && currentCheerGirl !== 'girl1') {
+                currentCheerGirl = 'girl1';
+                cheerImg.src = girl1URL;
+            } else if (!cheerImg.src) {
+                cheerImg.src = girl1URL;
+            }
 
-            // Head
-            ctx.fillStyle = '#ffcc99';
-            ctx.fillRect(8, 8, 8, 8);
+            cheerMsg.innerText = message;
+            cheerImg.style.display = 'block';
+            cheerMsg.style.display = 'block';
+            cheerTimer = 120; // Show for 2 seconds
 
-            // Eyes
-            ctx.fillStyle = '#000';
-            ctx.fillRect(10, 11, 1, 1);
-            ctx.fillRect(13, 11, 1, 1);
-
-            // Smile
-            ctx.fillRect(10, 13, 4, 1);
-
-            // Body (outfit)
-            ctx.fillStyle = color;
-            ctx.fillRect(8, 16, 8, 6);
-
-            // Arms (raised with pom-poms)
-            ctx.fillStyle = '#ffcc99';
-            ctx.fillRect(6, 17, 2, 4);
-            ctx.fillRect(16, 17, 2, 4);
-
-            // Pom-poms
-            ctx.fillStyle = '#ffff00';
-            ctx.fillRect(4, 15, 3, 3);
-            ctx.fillRect(17, 15, 3, 3);
-
-            // Skirt
-            ctx.fillStyle = color;
-            ctx.fillRect(7, 22, 10, 4);
-
-            // Legs
-            ctx.fillStyle = '#ffcc99';
-            ctx.fillRect(9, 26, 2, 5);
-            ctx.fillRect(13, 26, 2, 5);
-
-            // Shoes
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(8, 31, 3, 1);
-            ctx.fillRect(13, 31, 3, 1);
-
-            document.getElementById('cheerleaders').appendChild(cheerEl);
-            cheerleaders.push(cheerEl);
-        }
-
-        function clearCheerleaders() {
-            cheerleaders.forEach(el => el.remove());
-            cheerleaders = [];
+            // Particles from girl
+            createParticles(canvas.width - 80, canvas.height - 100, '#ff00ff', 15, false, true);
         }
 
         function createParticles(x, y, color, count, isFire = false, isExplosion = false) {
@@ -471,6 +461,14 @@
                 celebrationTimer--;
                 if (celebrationTimer === 0) {
                     document.getElementById('recordMsg').style.display = 'none';
+                }
+            }
+
+            if (cheerTimer > 0) {
+                cheerTimer--;
+                if (cheerTimer === 0) {
+                    document.getElementById('cheerGirl').style.display = 'none';
+                    document.getElementById('cheerMessage').style.display = 'none';
                 }
             }
 
@@ -919,9 +917,12 @@
             score = 0;
             streak = 0;
             hasCelebratedThisRun = false;
+            currentCheerGirl = 'girl1'; // Reset to girl1
 
-            // Clear all cheerleaders on fail
-            clearCheerleaders();
+            // Hide cheerleader
+            document.getElementById('cheerGirl').style.display = 'none';
+            document.getElementById('cheerMessage').style.display = 'none';
+            cheerTimer = 0;
 
             updateUI();
 
@@ -932,10 +933,9 @@
             score++;
             streak++;
 
-            // Spawn new cheerleader every 3 points
-            if (score > 0 && score % 3 === 0) {
-                const colorIndex = Math.floor(score / 3 - 1) % cheerColors.length;
-                createPixelCheerleader(cheerColors[colorIndex]);
+            // Show cheerleader every 4 points
+            if (score > 0 && score % 4 === 0) {
+                showCheerGirl();
             }
 
             // Show combo message
