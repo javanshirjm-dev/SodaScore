@@ -4,27 +4,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Side View Hoops</title>
+    <title>RETRO HOOPS '86</title>
+    <link rel="shortcut icon" href="https://pngimg.com/d/cocacola_PNG22.png" type="image/x-icon">k
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
-            background: #050505;
+            background: #000;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             color: white;
-            font-family: 'Verdana', sans-serif;
+            font-family: 'Press Start 2P', monospace;
             overflow: hidden;
             user-select: none;
         }
 
+        #gameContainer {
+            position: relative;
+            filter: contrast(1.1) brightness(1.05);
+        }
+
         canvas {
-            /* Street Night Gradient */
-            background: linear-gradient(to bottom, #2c3e50, #000000);
-            border: 2px solid #555;
-            box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+            background: linear-gradient(to bottom, #1a0033, #000000);
+            border: 4px solid #ff00ff;
+            box-shadow:
+                0 0 20px #ff00ff,
+                0 0 40px rgba(255, 0, 255, 0.5),
+                inset 0 0 100px rgba(0, 0, 0, 0.8);
             cursor: crosshair;
+            image-rendering: crisp-edges;
+        }
+
+        /* CRT Scanlines Effect */
+        #gameContainer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(0deg,
+                    rgba(0, 0, 0, 0.15),
+                    rgba(0, 0, 0, 0.15) 1px,
+                    transparent 1px,
+                    transparent 2px);
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* CRT Curve Effect */
+        #gameContainer::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(ellipse at center,
+                    rgba(0, 0, 0, 0) 0%,
+                    rgba(0, 0, 0, 0) 50%,
+                    rgba(0, 0, 0, 0.3) 100%);
+            pointer-events: none;
+            z-index: 5;
         }
 
         #ui {
@@ -38,146 +88,546 @@
 
         h1 {
             margin: 0;
-            font-size: 50px;
-            font-weight: 900;
-            color: #fff;
-            text-shadow: 3px 3px 0 #000;
+            font-size: 28px;
+            font-weight: 400;
+            color: #00ffff;
+            text-shadow:
+                3px 3px 0 #ff00ff,
+                -2px -2px 0 #ffff00,
+                0 0 20px #00ffff;
+            letter-spacing: 4px;
+            animation: glitchTitle 3s infinite;
+        }
+
+        @keyframes glitchTitle {
+
+            0%,
+            90%,
+            100% {
+                transform: translate(0);
+                text-shadow:
+                    3px 3px 0 #ff00ff,
+                    -2px -2px 0 #ffff00,
+                    0 0 20px #00ffff;
+            }
+
+            92% {
+                transform: translate(-2px, 2px);
+                text-shadow:
+                    3px 3px 0 #ffff00,
+                    -2px -2px 0 #00ffff,
+                    0 0 20px #ff00ff;
+            }
+
+            94% {
+                transform: translate(2px, -2px);
+            }
         }
 
         .label {
-            font-size: 12px;
-            color: #aaa;
-            letter-spacing: 2px;
+            font-size: 8px;
+            color: #ff00ff;
+            letter-spacing: 3px;
             text-transform: uppercase;
+            text-shadow: 0 0 10px #ff00ff;
+            margin: 10px 0;
+        }
+
+        #scoreVal {
+            font-size: 48px;
+            display: inline-block;
+            animation: scoreGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes scoreGlow {
+
+            0%,
+            100% {
+                text-shadow: 0 0 20px currentColor;
+            }
+
+            50% {
+                text-shadow: 0 0 40px currentColor, 0 0 60px currentColor;
+            }
         }
 
         #recordMsg {
             position: absolute;
-            top: 40%;
+            top: 35%;
             width: 100%;
             text-align: center;
-            font-size: 60px;
+            font-size: 24px;
             font-weight: bold;
-            color: #f1c40f;
-            text-shadow: 0 0 20px #e67e22;
+            color: #ffff00;
+            text-shadow:
+                0 0 30px #ffff00,
+                0 0 60px #ff00ff,
+                3px 3px 0 #ff00ff;
             display: none;
             z-index: 20;
-            animation: pop 0.5s ease-out;
+            animation: recordPop 0.6s ease-out;
         }
 
-        @keyframes pop {
+        @keyframes recordPop {
             0% {
-                transform: scale(0);
+                transform: scale(0) rotate(-10deg);
+                opacity: 0;
             }
 
-            70% {
-                transform: scale(1.2);
+            50% {
+                transform: scale(1.3) rotate(5deg);
             }
 
             100% {
-                transform: scale(1);
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
             }
+        }
+
+        #congratulations {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            z-index: 25;
+            pointer-events: none;
+        }
+
+        .congrats-text {
+            position: absolute;
+            top: 30%;
+            width: 100%;
+            text-align: center;
+            font-size: 32px;
+            color: #ffff00;
+            text-shadow:
+                0 0 40px #ffff00,
+                0 0 80px #ff00ff,
+                4px 4px 0 #ff00ff;
+            animation: congratsGlow 1.5s ease-in-out infinite;
+        }
+
+        @keyframes congratsGlow {
+
+            0%,
+            100% {
+                transform: scale(1);
+                text-shadow:
+                    0 0 40px #ffff00,
+                    0 0 80px #ff00ff,
+                    4px 4px 0 #ff00ff;
+            }
+
+            50% {
+                transform: scale(1.1);
+                text-shadow:
+                    0 0 60px #ffff00,
+                    0 0 120px #ff00ff,
+                    6px 6px 0 #ff00ff;
+            }
+        }
+
+        .star-burst {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            animation: starBurst 1s ease-out forwards;
+        }
+
+        @keyframes starBurst {
+            0% {
+                transform: translate(-50%, -50%) scale(0) rotate(0deg);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(3) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        #cheerGirl {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            z-index: 15;
+            animation: cheerBounce 0.5s ease-out;
+        }
+
+        @keyframes cheerBounce {
+            0% {
+                transform: translateX(-50%) translateY(100px) scale(0);
+                opacity: 0;
+            }
+
+            60% {
+                transform: translateX(-50%) translateY(-20px) scale(1.1);
+            }
+
+            100% {
+                transform: translateX(-50%) translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        .cheer-message {
+            position: absolute;
+            top: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 0, 255, 0.9);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 10px;
+            color: #fff;
+            white-space: nowrap;
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 20px #ff00ff;
+            animation: messagePop 0.4s ease-out;
+        }
+
+        @keyframes messagePop {
+            0% {
+                transform: translateX(-50%) scale(0);
+            }
+
+            70% {
+                transform: translateX(-50%) scale(1.2);
+            }
+
+            100% {
+                transform: translateX(-50%) scale(1);
+            }
+        }
+
+        #combo {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+            color: #00ffff;
+            text-shadow: 0 0 20px #00ffff;
+            display: none;
+            z-index: 15;
+            animation: comboFloat 1s ease-out forwards;
+        }
+
+        @keyframes comboFloat {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+
+            50% {
+                transform: translate(-50%, -60%) scale(1.2);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -80%) scale(1);
+            }
+        }
+
+        #streak {
+            position: absolute;
+            top: 100px;
+            width: 100%;
+            text-align: center;
+            font-size: 12px;
+            color: #ffff00;
+            text-shadow: 0 0 15px #ffff00;
+            pointer-events: none;
+            z-index: 10;
         }
     </style>
 </head>
 
 <body>
 
-    <div id="ui">
-        <div class="label">SCORE</div>
-        <h1><span id="scoreVal">0</span></h1>
-        <div class="label" style="margin-top: 5px;">BEST: <span id="highScoreVal">0</span></div>
-    </div>
+    <div id="gameContainer">
+        <div id="ui">
+            <h1>RETRO HOOPS</h1>
+            <div class="label">SCORE</div>
+            <div><span id="scoreVal">0</span></div>
+            <div class="label" style="margin-top: 10px;">BEST: <span id="highScoreVal">0</span></div>
+        </div>
 
-    <div id="recordMsg">NEW RECORD!</div>
-    <canvas id="gameCanvas"></canvas>
+        <div id="streak"></div>
+        <div id="combo">COMBO!</div>
+        <div id="recordMsg">★ NEW RECORD! ★</div>
+
+        <div id="congratulations">
+            <div class="congrats-text">
+                ★★ CONGRATULATIONS! ★★<br>
+                <span style="font-size: 16px; margin-top: 10px; display: inline-block;">NEW HIGH SCORE!</span>
+            </div>
+        </div>
+
+        <div id="cheerGirl">
+            <svg width="100" height="120" viewBox="0 0 100 120">
+                <!-- Hair -->
+                <ellipse cx="50" cy="35" rx="28" ry="32" fill="#ff00ff" />
+
+                <!-- Head -->
+                <circle cx="50" cy="35" r="20" fill="#ffcc99" />
+
+                <!-- Eyes -->
+                <circle cx="43" cy="32" r="2" fill="#000" />
+                <circle cx="57" cy="32" r="2" fill="#000" />
+
+                <!-- Smile -->
+                <path d="M 42 40 Q 50 45 58 40" stroke="#000" stroke-width="1.5" fill="none" />
+
+                <!-- Cheerleader outfit - top -->
+                <rect x="35" y="53" width="30" height="20" fill="#00ffff" rx="3" />
+                <text x="50" y="67" font-size="12" fill="#ff00ff" text-anchor="middle" font-weight="bold">★</text>
+
+                <!-- Arms - raised -->
+                <g class="left-arm">
+                    <rect x="28" y="55" width="8" height="25" fill="#ffcc99" rx="4" transform="rotate(-45 32 55)" />
+                    <!-- Pom-pom -->
+                    <circle cx="18" cy="48" r="8" fill="#ffff00" />
+                    <circle cx="15" cy="45" r="3" fill="#ff00ff" />
+                    <circle cx="21" cy="45" r="3" fill="#ff00ff" />
+                    <circle cx="18" cy="51" r="3" fill="#ff00ff" />
+                </g>
+                <g class="right-arm">
+                    <rect x="64" y="55" width="8" height="25" fill="#ffcc99" rx="4" transform="rotate(45 68 55)" />
+                    <!-- Pom-pom -->
+                    <circle cx="82" cy="48" r="8" fill="#ffff00" />
+                    <circle cx="79" cy="45" r="3" fill="#ff00ff" />
+                    <circle cx="85" cy="45" r="3" fill="#ff00ff" />
+                    <circle cx="82" cy="51" r="3" fill="#ff00ff" />
+                </g>
+
+                <!-- Skirt -->
+                <path d="M 35 73 L 30 95 L 70 95 L 65 73 Z" fill="#00ffff" />
+
+                <!-- Legs -->
+                <rect x="38" y="95" width="8" height="20" fill="#ffcc99" rx="4" />
+                <rect x="54" y="95" width="8" height="20" fill="#ffcc99" rx="4" />
+
+                <!-- Shoes -->
+                <ellipse cx="42" cy="117" rx="6" ry="4" fill="#fff" />
+                <ellipse cx="58" cy="117" rx="6" ry="4" fill="#fff" />
+            </svg>
+            <div class="cheer-message" id="cheerMessage">AMAZING!</div>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+    </div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // 1. Setup Canvas
+        // Setup Canvas
         canvas.width = 400;
         canvas.height = 600;
 
-        let savedScore = localStorage.getItem('sodaHighScore');
+        let savedScore = localStorage.getItem('retroHoopsScore');
         let highScore = savedScore ? parseInt(savedScore) : 0;
         document.getElementById('highScoreVal').innerText = highScore;
 
-        // 2. Game Variables
+        // Game Variables
         let score = 0;
-        let gravity = 0.5;
-        let friction = 0.99;
+        let streak = 0;
+        let gravity = 0.45;
+        let friction = 0.985;
         let isSodaInAir = false;
         let particles = [];
+        let trails = [];
         let celebrationTimer = 0;
         let hasCelebratedThisRun = false;
+        let shakeAmount = 0;
+        let backgroundStars = [];
+        let congratsTimer = 0;
+        let cheerTimer = 0;
 
         // Slingshot Logic
         let isDragging = false;
         let dragCurrentX = 0;
         let dragCurrentY = 0;
-        const forceMultiplier = 0.18;
-        const maxDragDistance = 120;
+        const forceMultiplier = 0.2;
+        const maxDragDistance = 130;
 
-        // --- SODA TYPES ---
+        // Retro Can Types with Vibrant Colors
         const canTypes = [
-            { name: 'Cola', color: '#c0392b', logo: '#fff' },
-            { name: 'Orange', color: '#e67e22', logo: '#2980b9' },
-            { name: 'Lemon', color: '#f1c40f', logo: '#27ae60' },
-            { name: 'Grape', color: '#8e44ad', logo: '#fff' },
-            { name: 'Blue', color: '#2980b9', logo: '#fff' }
+            { name: 'NEON', color: '#ff00ff', logo: '#00ffff', glow: '#ff00ff' },
+            { name: 'CYBER', color: '#00ffff', logo: '#ff00ff', glow: '#00ffff' },
+            { name: 'SOLAR', color: '#ffff00', logo: '#ff00ff', glow: '#ffff00' },
+            { name: 'ULTRA', color: '#ff0080', logo: '#00ff00', glow: '#ff0080' },
+            { name: 'RETRO', color: '#00ff00', logo: '#ff00ff', glow: '#00ff00' }
         ];
 
         const soda = {
             x: 60,
             y: canvas.height - 150,
-            width: 24,
-            height: 40,
-            radius: 12,
+            width: 26,
+            height: 42,
             angle: 0,
+            angularVelocity: 0,
             typeIdx: 0,
             vx: 0,
             vy: 0,
             startX: 60,
             startY: canvas.height - 150,
-            visible: true
+            visible: true,
+            squashX: 1,
+            squashY: 1
         };
 
-        // --- BASKET (SIDE VIEW) ---
-        // x = The LEFT TIP of the rim (the part facing the ball)
+        // Basket (Side View)
         const basket = {
             x: 280,
             y: 200,
-            width: 80, // Distance from Rim Tip to Backboard
+            width: 80,
             height: 60,
             speed: 2,
-            direction: 1
+            direction: 1,
+            wobble: 0,
+            targetY: 200
         };
 
-        function createParticles(x, y, color, count, isFire = false) {
+        // Initialize Stars
+        for (let i = 0; i < 50; i++) {
+            backgroundStars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 2,
+                speed: Math.random() * 0.5 + 0.2,
+                brightness: Math.random()
+            });
+        }
+
+        function createParticles(x, y, color, count, isFire = false, isExplosion = false) {
             for (let i = 0; i < count; i++) {
+                const angle = (Math.PI * 2 * i) / count;
+                const speed = isExplosion ? Math.random() * 8 + 4 : Math.random() * 3 + 1;
                 particles.push({
                     x: x + (Math.random() * 10 - 5),
                     y: y + (Math.random() * 10 - 5),
-                    vx: isFire ? (Math.random() - 0.5) * 2 : (Math.random() - 0.5) * 15,
-                    vy: isFire ? (Math.random() * -3 - 1) : (Math.random() - 0.5) * 15,
+                    vx: isFire ? (Math.random() - 0.5) * 2 : Math.cos(angle) * speed,
+                    vy: isFire ? (Math.random() * -3 - 1) : Math.sin(angle) * speed,
                     life: 1.0,
                     color: color,
-                    size: Math.random() * 6 + 2,
-                    isFire: isFire
+                    size: Math.random() * (isExplosion ? 8 : 5) + 2,
+                    isFire: isFire,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.2
                 });
             }
+        }
+
+        function createTrail(x, y, color) {
+            trails.push({
+                x: x,
+                y: y,
+                life: 1.0,
+                color: color,
+                size: 8
+            });
+        }
+
+        function screenShake(amount) {
+            shakeAmount = amount;
+        }
+
+        function showCongratulations() {
+            const congratsEl = document.getElementById('congratulations');
+            congratsEl.style.display = 'block';
+            congratsTimer = 180; // 3 seconds
+
+            // Create starburst effect
+            for (let i = 0; i < 12; i++) {
+                const star = document.createElement('div');
+                star.className = 'star-burst';
+                const angle = (i / 12) * Math.PI * 2;
+                const distance = 150;
+                star.style.left = `${50 + Math.cos(angle) * distance}%`;
+                star.style.top = `${40 + Math.sin(angle) * distance}%`;
+                star.style.background = i % 3 === 0 ? '#ffff00' : i % 3 === 1 ? '#ff00ff' : '#00ffff';
+                star.innerHTML = '★';
+                star.style.fontSize = '24px';
+                star.style.animationDelay = `${i * 0.05}s`;
+                congratsEl.appendChild(star);
+
+                setTimeout(() => star.remove(), 1000);
+            }
+
+            // Rainbow particles
+            createParticles(canvas.width / 2, canvas.height / 3, '#ffff00', 40, false, true);
+            createParticles(canvas.width / 2, canvas.height / 3, '#ff00ff', 40, false, true);
+            createParticles(canvas.width / 2, canvas.height / 3, '#00ffff', 40, false, true);
+        }
+
+        function showCheerGirl() {
+            const cheerGirl = document.getElementById('cheerGirl');
+            const messages = [
+                'AWESOME!', 'AMAZING!', 'GREAT SHOT!', 'ON FIRE!',
+                'KEEP GOING!', 'FANTASTIC!', 'INCREDIBLE!', 'WOW!'
+            ];
+
+            const message = messages[Math.floor(Math.random() * messages.length)];
+            document.getElementById('cheerMessage').innerText = message;
+
+            cheerGirl.style.display = 'block';
+            cheerTimer = 90; // 1.5 seconds
+
+            // Confetti from cheerleader
+            const cheerX = canvas.width / 2;
+            const cheerY = canvas.height - 50;
+            createParticles(cheerX, cheerY, '#ff00ff', 20, false, true);
+            createParticles(cheerX, cheerY, '#ffff00', 15, false, true);
         }
 
         function update() {
             if (celebrationTimer > 0) celebrationTimer--;
             if (celebrationTimer === 0) document.getElementById('recordMsg').style.display = 'none';
 
-            // Move Basket
+            if (congratsTimer > 0) {
+                congratsTimer--;
+                if (congratsTimer === 0) {
+                    document.getElementById('congratulations').style.display = 'none';
+                }
+            }
+
+            if (cheerTimer > 0) {
+                cheerTimer--;
+                if (cheerTimer === 0) {
+                    document.getElementById('cheerGirl').style.display = 'none';
+                }
+            }
+
+            if (shakeAmount > 0) {
+                shakeAmount *= 0.9;
+                if (shakeAmount < 0.1) shakeAmount = 0;
+            }
+
+            // Smooth Basket Movement with Easing
+            basket.wobble += 0.05;
+            const targetSpeed = 2 + (score * 0.15);
+            basket.speed += (targetSpeed - basket.speed) * 0.1;
+
             basket.y += basket.speed * basket.direction;
             if (basket.y > canvas.height - 150 || basket.y < 50) {
                 basket.direction *= -1;
+                screenShake(3);
+            }
+
+            // Update Stars
+            for (let star of backgroundStars) {
+                star.y += star.speed;
+                star.brightness = 0.3 + Math.sin(Date.now() * 0.001 + star.x) * 0.7;
+                if (star.y > canvas.height) {
+                    star.y = 0;
+                    star.x = Math.random() * canvas.width;
+                }
             }
 
             // Update Particles
@@ -185,10 +635,20 @@
                 let p = particles[i];
                 p.x += p.vx;
                 p.y += p.vy;
-                if (!p.isFire) p.vy += gravity;
-                p.life -= p.isFire ? 0.05 : 0.03;
-                p.size *= 0.95;
+                if (!p.isFire) p.vy += gravity * 0.5;
+                p.vx *= 0.98;
+                p.life -= p.isFire ? 0.04 : 0.025;
+                p.size *= 0.96;
+                p.rotation += p.rotationSpeed;
                 if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            // Update Trails
+            for (let i = trails.length - 1; i >= 0; i--) {
+                let t = trails[i];
+                t.life -= 0.08;
+                t.size *= 0.92;
+                if (t.life <= 0) trails.splice(i, 1);
             }
 
             // Move Soda
@@ -197,86 +657,150 @@
                 soda.y += soda.vy;
                 soda.vy += gravity;
                 soda.vx *= friction;
-                soda.angle += 0.15;
 
-                // Fire Logic
-                if (score >= 5) {
-                    let fireColor = score >= 10 ? '#00d2d3' : '#e67e22';
-                    let intensity = score >= 10 ? 3 : 1;
-                    createParticles(soda.x, soda.y, fireColor, intensity, true);
+                // Realistic rotation based on velocity
+                soda.angularVelocity = soda.vx * 0.1;
+                soda.angle += soda.angularVelocity;
+
+                // Squash and stretch based on velocity
+                const speed = Math.sqrt(soda.vx * soda.vx + soda.vy * soda.vy);
+                soda.squashX = 1 + Math.abs(soda.vx) * 0.01;
+                soda.squashY = 1 + Math.abs(soda.vy) * 0.01;
+
+                // Trail Effect
+                if (score >= 3) {
+                    createTrail(soda.x, soda.y, canTypes[soda.typeIdx].glow);
                 }
 
-                // --- FAIL CONDITION ---
-                if (soda.y > canvas.height - 20 || soda.x > canvas.width + 50 || soda.x < -50) {
+                // Fire/Glow Trail
+                if (score >= 5) {
+                    let fireColor = score >= 10 ? '#00ffff' : '#ff00ff';
+                    if (score >= 15) fireColor = '#ffff00';
+                    let intensity = Math.min(score / 3, 5);
+                    createParticles(soda.x, soda.y, fireColor, Math.floor(intensity), true);
+                }
+
+                // Fail Condition
+                if (soda.y > canvas.height + 20 || soda.x > canvas.width + 50 || soda.x < -50) {
                     handleFail();
                 }
 
-                // --- COLLISION PHYSICS (SIDE VIEW) ---
-
-                // 1. Hit the FRONT RIM TIP (The little nub on the left)
-                // Distance check to point (basket.x, basket.y)
+                // Collision with Rim Tip
                 let dx = soda.x - basket.x;
                 let dy = soda.y - basket.y;
                 let dist = Math.sqrt(dx * dx + dy * dy);
 
-                if (dist < 15) { // Hit the metal rim tip
-                    soda.vx = -Math.abs(soda.vx * 0.7) - 2; // Bounce LEFT hard
-                    soda.vy *= -0.7; // Bounce Vertically
-                    soda.x -= 2; // Push out
+                if (dist < 16) {
+                    soda.vx = -Math.abs(soda.vx * 0.75) - 2.5;
+                    soda.vy *= -0.65;
+                    soda.x -= 3;
+                    soda.angularVelocity = -0.3;
+                    createParticles(basket.x, basket.y, '#ffffff', 8);
+                    screenShake(4);
                 }
 
-                // 2. Hit the BACKBOARD (Vertical Wall)
-                // The backboard is at basket.x + basket.width
+                // Collision with Backboard
                 let backboardX = basket.x + basket.width;
-
-                // If ball is near backboard X and within backboard Y height
                 if (soda.x + soda.width / 2 > backboardX - 5 && soda.x < backboardX + 10) {
                     if (soda.y > basket.y - 50 && soda.y < basket.y + 30) {
-                        soda.vx = -Math.abs(soda.vx * 0.6); // Bounce Left
-                        soda.x = backboardX - 5 - soda.width / 2; // Push out
+                        soda.vx = -Math.abs(soda.vx * 0.7);
+                        soda.x = backboardX - 5 - soda.width / 2;
+                        soda.angularVelocity = 0.2;
+                        createParticles(backboardX, soda.y, '#ffffff', 6);
+                        screenShake(3);
                     }
                 }
 
-                // --- SCORING CONDITION ---
-                // Must pass downward through the line between RimTip and Backboard
-                if (soda.vy > 0) { // Falling
-                    // Is X between Rim and Backboard?
-                    if (soda.x > basket.x + 5 && soda.x < basket.x + basket.width - 5) {
-                        // Is Y crossing the rim line?
-                        // We use a small threshold to catch the frame it crosses
-                        if (soda.y > basket.y && soda.y < basket.y + 15) {
+                // Scoring Condition
+                if (soda.vy > 0) {
+                    if (soda.x > basket.x + 8 && soda.x < basket.x + basket.width - 8) {
+                        if (soda.y > basket.y && soda.y < basket.y + 18) {
                             handleScore();
                         }
                     }
                 }
             }
+
+            // Reset squash to normal when not moving
+            if (!isSodaInAir) {
+                soda.squashX += (1 - soda.squashX) * 0.2;
+                soda.squashY += (1 - soda.squashY) * 0.2;
+            }
         }
 
         function draw() {
-            ctx.fillStyle = '#111';
+            ctx.save();
+
+            // Screen shake
+            if (shakeAmount > 0) {
+                ctx.translate(
+                    (Math.random() - 0.5) * shakeAmount,
+                    (Math.random() - 0.5) * shakeAmount
+                );
+            }
+
+            // Background
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#1a0033');
+            gradient.addColorStop(0.5, '#0a001a');
+            gradient.addColorStop(1, '#000000');
+            ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Stars
+            for (let star of backgroundStars) {
+                ctx.globalAlpha = star.brightness;
+                ctx.fillStyle = score >= 10 ? '#00ffff' : score >= 5 ? '#ff00ff' : '#ffffff';
+                ctx.fillRect(star.x, star.y, star.size, star.size);
+            }
+            ctx.globalAlpha = 1.0;
 
             drawGrid();
 
-            // Launcher
-            ctx.fillStyle = '#444';
-            ctx.fillRect(soda.startX - 20, soda.startY + 20, 40, 10);
+            // Launcher Platform
+            ctx.fillStyle = '#333';
+            ctx.shadowColor = '#ff00ff';
+            ctx.shadowBlur = 10;
+            ctx.fillRect(soda.startX - 25, soda.startY + 25, 50, 8);
+            ctx.shadowBlur = 0;
+
+            // Draw Trails
+            for (let t of trails) {
+                ctx.globalAlpha = t.life * 0.6;
+                ctx.fillStyle = t.color;
+                ctx.shadowColor = t.color;
+                ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, t.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1.0;
+            ctx.shadowBlur = 0;
 
             // Particles
             for (let p of particles) {
                 ctx.globalAlpha = p.life;
                 ctx.fillStyle = p.color;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 10;
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.rotation);
+                if (p.isFire) {
+                    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
             }
             ctx.globalAlpha = 1.0;
+            ctx.shadowBlur = 0;
 
             if (isDragging && !isSodaInAir && soda.visible) drawTrajectory();
 
-            // --- DRAW BASKET (SIDE VIEW) ---
-            // Layers: Back Net -> Backboard -> Soda -> Front Net -> Rim
-
+            // Draw Basket Layers
             drawBasketNetBack();
             drawBackboard();
 
@@ -284,52 +808,78 @@
 
             drawBasketNetFront();
             drawRim();
+
+            ctx.restore();
         }
 
         function drawBackboard() {
             const b = basket;
             const bbX = b.x + b.width;
 
-            // Pole
-            ctx.fillStyle = '#7f8c8d';
-            ctx.fillRect(bbX + 5, 0, 10, b.y); // Wall mount
+            // Pole with glow
+            ctx.fillStyle = '#555';
+            ctx.shadowColor = '#ff00ff';
+            ctx.shadowBlur = 5;
+            ctx.fillRect(bbX + 5, 0, 10, b.y);
+            ctx.shadowBlur = 0;
 
-            // Backboard (Side view is a thin rectangle)
-            ctx.fillStyle = '#ecf0f1';
+            // Backboard
+            const bbGradient = ctx.createLinearGradient(bbX, b.y - 60, bbX + 8, b.y + 20);
+            bbGradient.addColorStop(0, '#ffffff');
+            bbGradient.addColorStop(1, '#cccccc');
+            ctx.fillStyle = bbGradient;
             ctx.fillRect(bbX, b.y - 60, 8, 80);
 
-            // Orange Stripe on side of backboard
-            ctx.fillStyle = '#e67e22';
-            ctx.fillRect(bbX, b.y - 15, 8, 5);
+            // Neon stripe
+            ctx.fillStyle = score >= 10 ? '#00ffff' : score >= 5 ? '#ffff00' : '#ff00ff';
+            ctx.shadowColor = ctx.fillStyle;
+            ctx.shadowBlur = 15;
+            ctx.fillRect(bbX, b.y - 18, 8, 8);
+            ctx.shadowBlur = 0;
         }
 
         function drawRim() {
             const b = basket;
 
-            // The Rim Line (Side View)
+            // Rim glow effect
+            const glowIntensity = score >= 10 ? 25 : score >= 5 ? 20 : 15;
+            ctx.shadowColor = score >= 10 ? '#00ffff' : score >= 5 ? '#ffff00' : '#ff00ff';
+            ctx.shadowBlur = glowIntensity;
+
+            // Main rim line
             ctx.beginPath();
-            ctx.moveTo(b.x, b.y); // Tip
-            ctx.lineTo(b.x + b.width, b.y); // Connect to backboard
-            ctx.lineWidth = 6;
-            ctx.strokeStyle = '#e67e22'; // Orange
+            ctx.moveTo(b.x, b.y);
+            ctx.lineTo(b.x + b.width, b.y);
+            ctx.lineWidth = 7;
+            ctx.strokeStyle = '#ff6600';
             ctx.lineCap = 'round';
             ctx.stroke();
 
-            // The "Hook" connector
+            // Rim highlight
+            ctx.beginPath();
+            ctx.moveTo(b.x, b.y - 1);
+            ctx.lineTo(b.x + b.width, b.y - 1);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#ffaa44';
+            ctx.stroke();
+
+            ctx.shadowBlur = 0;
+
+            // Hook connector
             ctx.beginPath();
             ctx.moveTo(b.x + b.width, b.y);
             ctx.lineTo(b.x + b.width - 15, b.y + 15);
             ctx.lineWidth = 4;
-            ctx.strokeStyle = '#d35400';
+            ctx.strokeStyle = '#cc4400';
             ctx.stroke();
         }
 
         function drawBasketNetBack() {
             const b = basket;
-            ctx.beginPath();
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; // Faint back net
 
-            // Trapezoid shape
+            // Back net shadow
+            ctx.fillStyle = 'rgba(100, 100, 150, 0.2)';
+            ctx.beginPath();
             ctx.moveTo(b.x, b.y);
             ctx.lineTo(b.x + b.width, b.y);
             ctx.lineTo(b.x + b.width - 10, b.y + b.height);
@@ -339,45 +889,52 @@
 
         function drawBasketNetFront() {
             const b = basket;
-            ctx.beginPath();
 
-            // Net Outline
-            ctx.moveTo(b.x, b.y); // Top Left
-            // Zig Zag down left side
+            // Net with glow
+            ctx.strokeStyle = score >= 5 ? 'rgba(0, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.9)';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = score >= 5 ? '#00ffff' : '#ffffff';
+            ctx.shadowBlur = score >= 5 ? 10 : 5;
+
+            // Outline
+            ctx.beginPath();
+            ctx.moveTo(b.x, b.y);
             ctx.lineTo(b.x + 5, b.y + 20);
             ctx.lineTo(b.x + 10, b.y + 40);
-            ctx.lineTo(b.x + 20, b.y + b.height); // Bottom Left
-
-            // Bottom Line
-            ctx.lineTo(b.x + b.width - 10, b.y + b.height); // Bottom Right
-
-            // Zig Zag up right side
+            ctx.lineTo(b.x + 20, b.y + b.height);
+            ctx.lineTo(b.x + b.width - 10, b.y + b.height);
             ctx.lineTo(b.x + b.width - 5, b.y + 40);
             ctx.lineTo(b.x + b.width - 2, b.y + 20);
-            ctx.lineTo(b.x + b.width, b.y); // Top Right
-
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.lineWidth = 2;
+            ctx.lineTo(b.x + b.width, b.y);
             ctx.stroke();
 
-            // Cross hatching for net look
-            ctx.beginPath();
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            // Cross hatching
+            ctx.strokeStyle = score >= 5 ? 'rgba(0, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.5)';
             ctx.lineWidth = 1;
-            // Horizontal rings
+            ctx.beginPath();
             ctx.moveTo(b.x + 5, b.y + 20); ctx.lineTo(b.x + b.width - 2, b.y + 20);
             ctx.moveTo(b.x + 10, b.y + 40); ctx.lineTo(b.x + b.width - 5, b.y + 40);
             ctx.stroke();
+
+            ctx.shadowBlur = 0;
         }
 
         function drawGrid() {
-            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            ctx.strokeStyle = score >= 10 ? 'rgba(0, 255, 255, 0.08)' :
+                score >= 5 ? 'rgba(255, 0, 255, 0.08)' :
+                    'rgba(255, 255, 255, 0.05)';
             ctx.lineWidth = 1;
-            for (let i = 0; i < canvas.width; i += 50) {
-                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            for (let i = 0; i < canvas.width; i += 40) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvas.height);
+                ctx.stroke();
             }
-            for (let i = 0; i < canvas.height; i += 50) {
-                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+            for (let i = 0; i < canvas.height; i += 40) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(canvas.width, i);
+                ctx.stroke();
             }
         }
 
@@ -385,31 +942,51 @@
             let x = isSodaInAir ? soda.x : (isDragging ? dragCurrentX : soda.startX);
             let y = isSodaInAir ? soda.y : (isDragging ? dragCurrentY : soda.startY);
 
-            if (score >= 10 && isSodaInAir) {
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = '#00d2d3';
+            const currentType = canTypes[soda.typeIdx];
+            let glowAmount = 0;
+
+            if (score >= 15 && isSodaInAir) {
+                glowAmount = 30;
+                ctx.shadowColor = '#ffff00';
+            } else if (score >= 10 && isSodaInAir) {
+                glowAmount = 25;
+                ctx.shadowColor = '#00ffff';
             } else if (score >= 5 && isSodaInAir) {
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = '#e67e22';
+                glowAmount = 20;
+                ctx.shadowColor = '#ff00ff';
             }
 
+            ctx.shadowBlur = glowAmount;
+
             let rotation = isSodaInAir ? soda.angle : 0;
-            const currentType = canTypes[soda.typeIdx];
 
             ctx.save();
             ctx.translate(x, y);
             ctx.rotate(rotation);
+            ctx.scale(soda.squashX, soda.squashY);
 
-            // Can
-            ctx.fillStyle = currentType.color;
+            // Can body with gradient
+            const canGradient = ctx.createLinearGradient(-soda.width / 2, 0, soda.width / 2, 0);
+            canGradient.addColorStop(0, currentType.color);
+            canGradient.addColorStop(0.5, currentType.color);
+            canGradient.addColorStop(1, '#000000');
+            ctx.fillStyle = canGradient;
             ctx.fillRect(-soda.width / 2, -soda.height / 2, soda.width, soda.height);
-            // Silver Rims
-            ctx.fillStyle = '#ccc';
-            ctx.fillRect(-soda.width / 2, -soda.height / 2, soda.width, 4);
-            ctx.fillRect(-soda.width / 2, soda.height / 2 - 4, soda.width, 4);
+
+            // Metallic rims
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-soda.width / 2, -soda.height / 2, soda.width, 5);
+            ctx.fillRect(-soda.width / 2, soda.height / 2 - 5, soda.width, 5);
+
+            // Shine effect
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.fillRect(-soda.width / 2 + 2, -soda.height / 2 + 8, 4, soda.height - 20);
+
             // Label
             ctx.fillStyle = currentType.logo;
-            ctx.fillRect(-5, -soda.height / 2 + 8, 10, soda.height - 16);
+            ctx.shadowColor = currentType.logo;
+            ctx.shadowBlur = 10;
+            ctx.fillRect(-6, -soda.height / 2 + 10, 12, soda.height - 20);
 
             ctx.restore();
             ctx.shadowBlur = 0;
@@ -421,7 +998,8 @@
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist > maxDragDistance) {
                 const ratio = maxDragDistance / dist;
-                dx *= ratio; dy *= ratio;
+                dx *= ratio;
+                dy *= ratio;
             }
 
             let simX = soda.startX;
@@ -429,53 +1007,96 @@
             let simVx = dx * forceMultiplier;
             let simVy = dy * forceMultiplier;
 
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-            for (let i = 0; i < 15; i++) {
+            const currentType = canTypes[soda.typeIdx];
+            ctx.fillStyle = currentType.glow;
+            ctx.shadowColor = currentType.glow;
+            ctx.shadowBlur = 10;
+
+            for (let i = 0; i < 20; i++) {
                 simX += simVx;
                 simY += simVy;
                 simVy += gravity;
+                ctx.globalAlpha = 1 - (i / 20);
                 ctx.beginPath();
-                ctx.arc(simX, simY, 2, 0, Math.PI * 2);
+                ctx.arc(simX, simY, 3, 0, Math.PI * 2);
                 ctx.fill();
             }
 
+            ctx.globalAlpha = 1.0;
+            ctx.shadowBlur = 0;
+
+            // Slingshot line
+            ctx.strokeStyle = currentType.glow;
+            ctx.shadowColor = currentType.glow;
+            ctx.shadowBlur = 15;
+            ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.strokeStyle = '#fff';
             ctx.moveTo(soda.startX, soda.startY);
             ctx.lineTo(dragCurrentX, dragCurrentY);
             ctx.stroke();
+            ctx.shadowBlur = 0;
         }
 
         function handleFail() {
             if (!soda.visible) return;
-            createParticles(soda.x, soda.y, canTypes[soda.typeIdx].color, 15, false);
+
+            // Explosion effect
+            createParticles(soda.x, soda.y, canTypes[soda.typeIdx].color, 25, false, true);
+            createParticles(soda.x, soda.y, '#ffffff', 15, false, true);
+            screenShake(10);
+
             soda.visible = false;
             score = 0;
+            streak = 0;
             hasCelebratedThisRun = false;
             updateUI();
-            setTimeout(() => { resetSoda(); }, 1000);
+
+            setTimeout(() => { resetSoda(); }, 1200);
         }
 
         function handleScore() {
             score++;
+            streak++;
+
+            // Show cheerleader every 3 points
+            if (score > 0 && score % 3 === 0) {
+                showCheerGirl();
+            }
+
+            // Show combo message
+            if (streak >= 3) {
+                const comboEl = document.getElementById('combo');
+                comboEl.innerText = `${streak}X COMBO!`;
+                comboEl.style.display = 'block';
+                setTimeout(() => { comboEl.style.display = 'none'; }, 1000);
+            }
 
             if (score > highScore) {
                 highScore = score;
-                localStorage.setItem('sodaHighScore', highScore);
+                localStorage.setItem('retroHoopsScore', highScore);
 
                 if (!hasCelebratedThisRun) {
+                    // Full congratulations animation
+                    showCongratulations();
+                    screenShake(20);
+                    hasCelebratedThisRun = true;
+                } else {
+                    // Just show the smaller new record message
                     celebrationTimer = 100;
                     document.getElementById('recordMsg').style.display = 'block';
-                    createParticles(canvas.width / 2, canvas.height / 2, '#f1c40f', 50, false);
-                    hasCelebratedThisRun = true;
+                    createParticles(canvas.width / 2, canvas.height / 2, '#ffff00', 50, false, true);
+                    screenShake(12);
                 }
             }
 
-            // Particles from net
-            createParticles(basket.x + basket.width / 2, basket.y + 20, '#fff', 10, false);
+            // Score particles
+            createParticles(basket.x + basket.width / 2, basket.y + 30, canTypes[soda.typeIdx].glow, 20);
+            screenShake(5);
 
-            basket.speed = Math.abs(basket.speed * 1.05);
+            // Increase difficulty
+            basket.speed = Math.min(Math.abs(basket.speed * 1.08), 8);
             if (Math.random() > 0.5) basket.direction *= -1;
+
             soda.typeIdx = (soda.typeIdx + 1) % canTypes.length;
 
             updateUI();
@@ -490,15 +1111,28 @@
             soda.x = soda.startX;
             soda.y = soda.startY;
             soda.angle = 0;
+            soda.angularVelocity = 0;
+            soda.squashX = 1;
+            soda.squashY = 1;
         }
 
         function updateUI() {
             document.getElementById('scoreVal').innerText = score;
             document.getElementById('highScoreVal').innerText = highScore;
+
             const scoreEl = document.getElementById('scoreVal');
-            if (score >= 10) scoreEl.style.color = '#00d2d3';
-            else if (score >= 5) scoreEl.style.color = '#e67e22';
-            else scoreEl.style.color = '#fff';
+            if (score >= 15) scoreEl.style.color = '#ffff00';
+            else if (score >= 10) scoreEl.style.color = '#00ffff';
+            else if (score >= 5) scoreEl.style.color = '#ff00ff';
+            else scoreEl.style.color = '#00ffff';
+
+            const streakEl = document.getElementById('streak');
+            if (streak >= 3) {
+                streakEl.innerText = `🔥 ${streak}X STREAK! 🔥`;
+                streakEl.style.display = 'block';
+            } else {
+                streakEl.style.display = 'none';
+            }
         }
 
         function onDown(e) {
@@ -509,7 +1143,7 @@
             const x = cX - rect.left;
             const y = cY - rect.top;
 
-            if (Math.sqrt((x - soda.startX) ** 2 + (y - soda.startY) ** 2) < 80) {
+            if (Math.sqrt((x - soda.startX) ** 2 + (y - soda.startY) ** 2) < 90) {
                 isDragging = true;
                 dragCurrentX = x;
                 dragCurrentY = y;
@@ -528,18 +1162,25 @@
         function onUp(e) {
             if (!isDragging) return;
             isDragging = false;
+
             let dx = soda.startX - dragCurrentX;
             let dy = soda.startY - dragCurrentY;
             const dist = Math.sqrt(dx * dx + dy * dy);
+
             if (dist > maxDragDistance) {
                 const ratio = maxDragDistance / dist;
-                dx *= ratio; dy *= ratio;
+                dx *= ratio;
+                dy *= ratio;
             }
+
             soda.x = soda.startX;
             soda.y = soda.startY;
             soda.vx = dx * forceMultiplier;
             soda.vy = dy * forceMultiplier;
             isSodaInAir = true;
+
+            // Launch particles
+            createParticles(soda.x, soda.y, canTypes[soda.typeIdx].glow, 12);
         }
 
         canvas.addEventListener('mousedown', onDown);
